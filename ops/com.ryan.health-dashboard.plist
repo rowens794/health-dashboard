@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "https://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.ryan.health-dashboard</string>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/ryan-desktop/.openclaw/workspace/health-dashboard</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>PORT=3001 npm run start</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>NODE_ENV</key>
+    <string>production</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/ryan-desktop/.openclaw/workspace/health-dashboard/logs/health-dashboard.stdout.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/ryan-desktop/.openclaw/workspace/health-dashboard/logs/health-dashboard.stderr.log</string>
+</dict>
+</plist>

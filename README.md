@@ -34,6 +34,7 @@ That keeps the MVP pretty boring in a good way: one web app, one app DB, one imp
   - recent measurements
   - weight trend chart
   - recent sync runs
+- Current UI display defaults to **lb** for weight, while imported source data remains stored in kg internally.
 
 ## Setup
 
@@ -45,6 +46,15 @@ npm run dev
 ```
 
 Then open `http://localhost:3000`.
+
+For a more stable local server, build and run production on port 3001:
+
+```bash
+npm run build
+PORT=3001 npm run start
+```
+
+Then open `http://localhost:3001`.
 
 ## Syncing
 
@@ -78,6 +88,31 @@ Example `launchd` / cron idea:
 ```bash
 */30 * * * * cd /Users/ryan-desktop/.openclaw/workspace/health-dashboard && npm run sync >> sync.log 2>&1
 ```
+
+### Persistent app serving with launchd
+
+A ready-to-use launchd plist template is included at:
+
+- `ops/com.ryan.health-dashboard.plist`
+
+It runs the production server on port `3001`, restarts it automatically, and writes logs to:
+
+- `logs/health-dashboard.stdout.log`
+- `logs/health-dashboard.stderr.log`
+
+Typical install flow:
+
+```bash
+cd /Users/ryan-desktop/.openclaw/workspace/health-dashboard
+mkdir -p logs
+npm run build
+cp ops/com.ryan.health-dashboard.plist ~/Library/LaunchAgents/
+launchctl unload ~/Library/LaunchAgents/com.ryan.health-dashboard.plist 2>/dev/null || true
+launchctl load ~/Library/LaunchAgents/com.ryan.health-dashboard.plist
+launchctl kickstart -k gui/$(id -u)/com.ryan.health-dashboard
+```
+
+Then open `http://localhost:3001`.
 
 ## Architecture notes
 
