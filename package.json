@@ -1,0 +1,26 @@
+{
+  "name": "health-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "sync": "tsx scripts/sync-renpho.ts"
+  },
+  "dependencies": {
+    "next": "15.3.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.14.0",
+    "@types/react": "19.1.1",
+    "@types/react-dom": "19.1.2",
+    "eslint": "9.23.0",
+    "eslint-config-next": "15.3.0",
+    "tsx": "4.19.3",
+    "typescript": "5.8.3"
+  }
+}
