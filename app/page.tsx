@@ -2,8 +2,15 @@ import { getDashboardData } from '@/lib/db';
 import { SyncButton } from '@/components/SyncButton';
 import { TrendChart } from '@/components/TrendChart';
 
+const KG_TO_LB = 2.2046226218;
+
 function formatMetric(value: number | null | undefined, suffix: string) {
   return value == null ? '—' : `${value}${suffix}`;
+}
+
+function formatWeightLbs(valueKg: number | null | undefined) {
+  if (valueKg == null) return '—';
+  return `${(valueKg * KG_TO_LB).toFixed(1)} lb`;
 }
 
 function formatDate(value: string | null | undefined) {
@@ -14,9 +21,18 @@ function formatDate(value: string | null | undefined) {
   }).format(new Date(value));
 }
 
+function getHoursSince(value: string | null | undefined) {
+  if (!value) return null;
+  const then = new Date(value).getTime();
+  if (Number.isNaN(then)) return null;
+  return (Date.now() - then) / (1000 * 60 * 60);
+}
+
 export default function HomePage() {
   const data = getDashboardData();
   const latest = data.latest;
+  const latestMeasurementAgeHours = getHoursSince(latest?.measured_at);
+  const sourceMayBeStale = latestMeasurementAgeHours != null && latestMeasurementAgeHours > 36;
 
   return (
     <main>
@@ -32,10 +48,20 @@ export default function HomePage() {
         Manual sync is live now. Scheduled sync can hit <span className="code">POST /api/sync?trigger=scheduled</span> or run <span className="code">npm run sync</span> from launchd/cron.
       </div>
 
+      <div className="notice" style={{ marginBottom: 16 }}>
+        RENPHO caveat: this dashboard only imports what the local <span className="code">RENPHO Health</span> Mac app has already pulled into its sqlite. If new weigh-ins are missing, open the app and let it sync first.
+      </div>
+
+      {sourceMayBeStale ? (
+        <div className="notice" style={{ marginBottom: 16, borderColor: '#f59e0b', background: '#3a2a07' }}>
+          Source may be stale: latest imported RENPHO measurement is from {formatDate(latest?.measured_at)}. If that looks wrong, make sure <span className="code">RENPHO Health</span> is open on this Mac and trigger a sync there before rerunning dashboard sync.
+        </div>
+      ) : null}
+
       <div className="grid cards">
         <section className="card">
           <div className="metricLabel">Latest weight</div>
-          <div className="metricValue">{formatMetric(latest?.weight_kg, ' kg')}</div>
+          <div className="metricValue">{formatWeightLbs(latest?.weight_kg)}</div>
           <div className="metricSub">Measured {formatDate(latest?.measured_at)}</div>
         </section>
         <section className="card">
@@ -128,7 +154,7 @@ export default function HomePage() {
               {data.recent.map((row: { measured_at: string; weight_kg: number | null; body_fat_pct: number | null; bmi: number | null; water_pct: number | null; muscle_pct: number | null; source_user_id: string }) => (
                 <tr key={row.measured_at}>
                   <td>{formatDate(row.measured_at)}</td>
-                  <td>{formatMetric(row.weight_kg, ' kg')}</td>
+                  <td>{formatWeightLbs(row.weight_kg)}</td>
                   <td>{formatMetric(row.body_fat_pct, '%')}</td>
                   <td>{formatMetric(row.bmi, '')}</td>
                   <td>{formatMetric(row.water_pct, '%')}</td>
