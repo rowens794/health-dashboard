@@ -72,6 +72,7 @@ button.secondary { background: var(--panel-soft); color: var(--text); }
 
 .chartAxis { stroke: rgba(255,255,255,0.18); }
 .chartGridLine { stroke: rgba(255,255,255,0.1); stroke-dasharray: 3 6; }
+.chartTickMark { stroke: rgba(255,255,255,0.42); stroke-width: 1.5; }
 .chartLabel { fill: var(--muted); font-size: 12px; }
 
 .chartLegend { display: flex; flex-wrap: wrap; gap: 10px 14px; margin-top: 8px; }

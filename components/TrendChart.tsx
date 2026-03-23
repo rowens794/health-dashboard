@@ -95,7 +95,7 @@ function formatMonthLabel(value: string) {
 }
 
 function getMonthTicks(rows: TrendRow[]) {
-  const ticks: Array<{ x: number; label: string; anchor: 'start' | 'middle' | 'end' }> = [];
+  const ticks: Array<{ x: number; label: string; anchor: 'start' | 'middle' | 'end'; tickX: number }> = [];
   if (!rows.length) return ticks;
 
   const firstParsed = parseDay(rows[0].day);
@@ -116,10 +116,13 @@ function getMonthTicks(rows: TrendRow[]) {
 
     const isFirst = cursor.getTime() === startMonth.getTime();
     const isLast = cursor.getTime() === endMonth.getTime();
+    const anchor = isFirst ? 'start' : isLast ? 'end' : 'middle';
+    const labelOffset = isFirst ? 14 : isLast ? -14 : 0;
     ticks.push({
-      x,
+      x: x + labelOffset,
+      tickX: x,
       label: formatMonthLabel(tickDay),
-      anchor: isFirst ? 'start' : isLast ? 'end' : 'middle',
+      anchor,
     });
   }
 
@@ -471,9 +474,18 @@ export function TrendChart({ rows }: { rows: TrendRow[] }) {
             );
           })}
           {monthTicks.map((tick) => (
-            <text key={`${tick.label}-${tick.x}`} x={tick.x} y={CHART_HEIGHT - 4} textAnchor={tick.anchor} className="chartLabel">
-              {tick.label}
-            </text>
+            <g key={`${tick.label}-${tick.tickX}`}>
+              <line
+                x1={tick.tickX}
+                y1={CHART_HEIGHT - PLOT_PADDING.bottom}
+                x2={tick.tickX}
+                y2={CHART_HEIGHT - PLOT_PADDING.bottom + 8}
+                className="chartTickMark"
+              />
+              <text x={tick.x} y={CHART_HEIGHT - 4} textAnchor={tick.anchor} className="chartLabel">
+                {tick.label}
+              </text>
+            </g>
           ))}
         </svg>
       </div>
