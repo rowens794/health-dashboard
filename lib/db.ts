@@ -7,9 +7,9 @@ import type { DailyStepsRecord, MeasurementRecord, NutritionDailyRecord } from '
 const TABLE_START_DAY = '2025-06-22';
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_CALORIES = 2500;
-const DEFAULT_PROTEIN_G = 188;
-const DEFAULT_CARBS_G = 250;
-const DEFAULT_FAT_G = 83;
+const DEFAULT_PROTEIN_G = 110;
+const DEFAULT_CARBS_G = 290;
+const DEFAULT_FAT_G = 100;
 const DEFAULT_STEPS = 8000;
 
 type RawDashboardDailyRow = {
