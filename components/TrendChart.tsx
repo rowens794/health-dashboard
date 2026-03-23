@@ -110,9 +110,8 @@ function getMonthTicks(rows: TrendRow[]) {
     if (x == null) continue;
 
     const isFirst = cursor.getTime() === startMonth.getTime();
-    const isLast = cursor.getTime() === endMonth.getTime();
-    const anchor = isFirst ? 'start' : isLast ? 'end' : 'middle';
-    const labelOffset = isFirst ? 14 : isLast ? -14 : 0;
+    const anchor = isFirst ? 'start' : 'middle';
+    const labelOffset = isFirst ? 14 : 0;
     rawTicks.push({
       x: x + labelOffset,
       tickX: x,
