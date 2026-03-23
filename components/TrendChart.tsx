@@ -90,12 +90,12 @@ function formatMonthLabel(value: string) {
 }
 
 function getMonthTicks(rows: TrendRow[]) {
-  const ticks: Array<{ x: number; label: string; anchor: 'start' | 'middle' | 'end'; tickX: number }> = [];
-  if (!rows.length) return ticks;
+  const rawTicks: Array<{ x: number; label: string; anchor: 'start' | 'middle' | 'end'; tickX: number }> = [];
+  if (!rows.length) return rawTicks;
 
   const firstParsed = parseDay(rows[0].day);
   const lastParsed = parseDay(rows[rows.length - 1].day);
-  if (!firstParsed || !lastParsed) return ticks;
+  if (!firstParsed || !lastParsed) return rawTicks;
 
   const startMonth = new Date(Date.UTC(firstParsed.getUTCFullYear(), firstParsed.getUTCMonth(), 1));
   const endMonth = new Date(Date.UTC(lastParsed.getUTCFullYear(), lastParsed.getUTCMonth(), 1));
@@ -113,7 +113,7 @@ function getMonthTicks(rows: TrendRow[]) {
     const isLast = cursor.getTime() === endMonth.getTime();
     const anchor = isFirst ? 'start' : isLast ? 'end' : 'middle';
     const labelOffset = isFirst ? 14 : isLast ? -14 : 0;
-    ticks.push({
+    rawTicks.push({
       x: x + labelOffset,
       tickX: x,
       label: formatMonthLabel(tickDay),
@@ -121,7 +121,20 @@ function getMonthTicks(rows: TrendRow[]) {
     });
   }
 
-  return ticks;
+  const minSpacing = 72;
+  const filtered: typeof rawTicks = [];
+  for (const tick of rawTicks) {
+    const prev = filtered[filtered.length - 1];
+    if (prev && tick.tickX - prev.tickX < minSpacing) {
+      if (prev.anchor === 'start') {
+        filtered[filtered.length - 1] = { ...prev, anchor: 'middle', x: prev.tickX };
+      }
+      continue;
+    }
+    filtered.push(tick);
+  }
+
+  return filtered;
 }
 
 function parseDay(day: string) {
