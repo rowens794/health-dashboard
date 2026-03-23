@@ -270,8 +270,9 @@ export function hasExistingDailySteps(source: string, stepDate: string) {
 }
 
 export function getDashboardData() {
-  ensureAppDb();
-  const dailyRowsRaw = sqliteQuery(APP_DB_PATH, `
+  try {
+    ensureAppDb();
+    const dailyRowsRaw = sqliteQuery(APP_DB_PATH, `
     WITH renpho_days AS (
       SELECT DISTINCT date(measured_at) AS day
       FROM measurements
@@ -342,10 +343,16 @@ export function getDashboardData() {
     carbs_g: normalizeNutritionValue(toNullableNumber(row.carbs_g)),
   }));
 
-  return {
-    dailyRows: buildDisplayDailyRows(rawDailyRows),
-    syncRuns: parseRows(syncRaw),
-  };
+    return {
+      dailyRows: buildDisplayDailyRows(rawDailyRows),
+      syncRuns: parseRows(syncRaw),
+    };
+  } catch {
+    return {
+      dailyRows: [],
+      syncRuns: [],
+    };
+  }
 }
 
 function toSql(value: string) {

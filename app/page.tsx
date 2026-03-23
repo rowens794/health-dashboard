@@ -2,6 +2,8 @@ import { getDashboardData } from '@/lib/db';
 import { SyncButton } from '@/components/SyncButton';
 import { TrendChart } from '@/components/TrendChart';
 
+export const dynamic = 'force-dynamic';
+
 const KG_TO_LB = 2.2046226218;
 
 type DailyRow = {
