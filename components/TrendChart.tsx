@@ -74,14 +74,9 @@ function formatGrams(value: number | null) {
   return value == null ? '—' : `${Math.round(value)} g`;
 }
 
-function formatDayLabel(value: string) {
-  const parsed = new Date(`${value}T00:00:00Z`);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    timeZone: 'UTC',
-  }).format(parsed);
+function formatAxisValue(value: number) {
+  if (Number.isInteger(value)) return Math.round(value).toLocaleString();
+  return value.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 
 function formatMonthLabel(value: string) {
@@ -416,7 +411,7 @@ export function TrendChart({ rows }: { rows: TrendRow[] }) {
           <div className="small">{config.subtitle}</div>
         </div>
         <div className="small chartRangeLabel">
-          {firstDay && lastDay ? `${formatDayLabel(firstDay)} - ${formatDayLabel(lastDay)}` : '—'}
+          {firstDay && lastDay ? `${formatMonthLabel(firstDay)} - ${formatMonthLabel(lastDay)}` : '—'}
         </div>
       </div>
 
@@ -449,7 +444,7 @@ export function TrendChart({ rows }: { rows: TrendRow[] }) {
                   className="chartGridLine"
                 />
                 <text x={PLOT_PADDING.left - 8} y={y + 4} textAnchor="end" className="chartLabel">
-                  {Number.isInteger(tick) ? tick.toString() : tick.toFixed(1)}
+                  {formatAxisValue(tick)}
                 </text>
               </g>
             );
