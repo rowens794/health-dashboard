@@ -30,6 +30,7 @@ type Series = {
   colorClass: string;
   values: Array<number | null>;
   dashed?: boolean;
+  isGoal?: boolean;
 };
 
 type SummaryRow = {
@@ -87,6 +88,15 @@ function formatMonthLabel(value: string) {
     year: '2-digit',
     timeZone: 'UTC',
   }).format(parsed).replace(' ', " '");
+}
+
+function formatTooltipDay(value: string) {
+  const parsed = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat('en-US', {
+    dateStyle: 'medium',
+    timeZone: 'UTC',
+  }).format(parsed);
 }
 
 function getMonthTicks(rows: TrendRow[]) {
@@ -176,6 +186,13 @@ function modeConfig(mode: Mode, rows: TrendRow[]): ModeConfig {
           colorClass: 'seriesWeightAvg',
           values: rows.map((row) => toLb(row.weight_7d_avg_kg)),
           dashed: true,
+        },
+        {
+          label: 'Goal (165 lb)',
+          colorClass: 'seriesGoal',
+          values: rows.map(() => 165),
+          dashed: true,
+          isGoal: true,
         },
       ],
       summaryRows: [
@@ -306,7 +323,7 @@ function modeConfig(mode: Mode, rows: TrendRow[]): ModeConfig {
   };
 }
 
-function getExtent(series: Series[]) {
+function getExtent(series: Series[], mode: Mode) {
   const values = series
     .flatMap((line) => line.values)
     .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
@@ -315,11 +332,28 @@ function getExtent(series: Series[]) {
     return { min: 0, max: 1, ticks: [0, 1] };
   }
 
-  const rawMin = Math.min(...values);
+  let rawMin = Math.min(...values);
   const rawMax = Math.max(...values);
-  const tickStep = chooseTickStep(rawMin, rawMax);
-  const min = Math.floor(rawMin / tickStep) * tickStep;
-  const max = Math.ceil(rawMax / tickStep) * tickStep;
+
+  if (mode === 'weight') {
+    rawMin = Math.min(rawMin, 160, 165);
+  }
+
+  const tickStep = chooseTickStep(rawMin, rawMax, mode);
+  let min = Math.floor(rawMin / tickStep) * tickStep;
+  let max = Math.ceil(rawMax / tickStep) * tickStep;
+
+  if (mode === 'weight') {
+    min = 160;
+  }
+  if (mode === 'calories') {
+    max = 3500;
+    min = 0;
+  }
+  if (max <= min) {
+    max = min + tickStep;
+  }
+
   const ticks: number[] = [];
   for (let value = min; value <= max + tickStep * 0.5; value += tickStep) {
     ticks.push(Number(value.toFixed(6)));
@@ -332,7 +366,9 @@ function getExtent(series: Series[]) {
   return { min, max, ticks };
 }
 
-function chooseTickStep(rawMin: number, rawMax: number) {
+function chooseTickStep(rawMin: number, rawMax: number, mode?: Mode) {
+  if (mode === 'weight') return 5;
+  if (mode === 'calories') return 500;
   const span = Math.max(rawMax - rawMin, 1);
   const roughStep = span / 5;
   const magnitude = 10 ** Math.floor(Math.log10(roughStep));
@@ -381,7 +417,7 @@ export function TrendChart({ rows }: { rows: TrendRow[] }) {
     [rows],
   );
   const config = useMemo(() => modeConfig(mode, sortedRows), [mode, sortedRows]);
-  const extent = useMemo(() => getExtent(config.series), [config.series]);
+  const extent = useMemo(() => getExtent(config.series, mode), [config.series, mode]);
 
   if (!rows.length) {
     return <div className="small">No imported data yet. Run a sync to populate trends.</div>;
@@ -467,17 +503,35 @@ export function TrendChart({ rows }: { rows: TrendRow[] }) {
             if (!path) return null;
 
             return (
-              <path
-                key={line.label}
-                d={path}
-                fill="none"
-                className={line.colorClass}
-                strokeWidth={line.dashed ? 3.5 : 2}
-                strokeOpacity={line.dashed ? 0.95 : 0.55}
-                strokeDasharray={line.dashed ? '6 5' : undefined}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+              <g key={line.label}>
+                <path
+                  d={path}
+                  fill="none"
+                  className={line.colorClass}
+                  strokeWidth={line.dashed ? (line.isGoal ? 2.5 : 3.5) : 1}
+                  strokeOpacity={line.dashed ? (line.isGoal ? 0.8 : 0.95) : 0.28}
+                  strokeDasharray={line.dashed ? (line.isGoal ? '10 6' : '6 5') : undefined}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                {line.values.map((value, index) => {
+                  if (value == null) return null;
+                  const x = xPosition(index, line.values.length);
+                  const y = yPosition(value, min, max);
+                  return (
+                    <circle
+                      key={`${line.label}-${sortedRows[index]?.day ?? index}`}
+                      cx={x}
+                      cy={y}
+                      r={line.isGoal ? 0 : line.dashed ? 3 : 5}
+                      fill="transparent"
+                      stroke="transparent"
+                    >
+                      <title>{`${line.label} • ${formatTooltipDay(sortedRows[index]?.day ?? '')} • ${formatAxisValue(value)}`}</title>
+                    </circle>
+                  );
+                })}
+              </g>
             );
           })}
           {monthTicks.map((tick) => (

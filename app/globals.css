@@ -81,6 +81,7 @@ button.secondary { background: var(--panel-soft); color: var(--text); }
 
 .seriesWeightDaily { stroke: #7dd3fc; background: #7dd3fc; }
 .seriesWeightAvg { stroke: #c0ebff; background: #c0ebff; }
+.seriesGoal { stroke: #ff9f1c; background: #ff9f1c; }
 .seriesCaloriesDaily { stroke: #ffd166; background: #ffd166; }
 .seriesCaloriesAvg { stroke: #ffe39b; background: #ffe39b; }
 .seriesStepsDaily { stroke: #72efdd; background: #72efdd; }

@@ -399,25 +399,26 @@ function buildDisplayDailyRows(rawDailyRows: RawDashboardDailyRow[]): DashboardD
   for (let cursor = new Date(startDate.getTime()); cursor <= endDate; cursor = new Date(cursor.getTime() + DAY_MS)) {
     const day = formatDayIso(cursor);
     const raw = rawByDay.get(day);
+    const isLatestDay = day === latestDay;
     rows.push({
       day,
       weight_kg: raw?.weight_kg ?? null,
       weight_kg_is_filled: false,
-      calories: raw?.calories ?? DEFAULT_CALORIES,
+      calories: raw?.calories ?? (isLatestDay ? null : DEFAULT_CALORIES),
       calories_7d_avg: null,
-      calories_is_filled: raw?.calories == null,
-      steps: raw?.steps ?? DEFAULT_STEPS,
+      calories_is_filled: !isLatestDay && raw?.calories == null,
+      steps: raw?.steps ?? (isLatestDay ? null : DEFAULT_STEPS),
       steps_7d_avg: null,
-      steps_is_filled: raw?.steps == null,
-      protein_g: raw?.protein_g ?? DEFAULT_PROTEIN_G,
+      steps_is_filled: !isLatestDay && raw?.steps == null,
+      protein_g: raw?.protein_g ?? (isLatestDay ? null : DEFAULT_PROTEIN_G),
       protein_7d_avg_g: null,
-      protein_g_is_filled: raw?.protein_g == null,
-      fat_g: raw?.fat_g ?? DEFAULT_FAT_G,
+      protein_g_is_filled: !isLatestDay && raw?.protein_g == null,
+      fat_g: raw?.fat_g ?? (isLatestDay ? null : DEFAULT_FAT_G),
       fat_7d_avg_g: null,
-      fat_g_is_filled: raw?.fat_g == null,
-      carbs_g: raw?.carbs_g ?? DEFAULT_CARBS_G,
+      fat_g_is_filled: !isLatestDay && raw?.fat_g == null,
+      carbs_g: raw?.carbs_g ?? (isLatestDay ? null : DEFAULT_CARBS_G),
       carbs_7d_avg_g: null,
-      carbs_g_is_filled: raw?.carbs_g == null,
+      carbs_g_is_filled: !isLatestDay && raw?.carbs_g == null,
       weight_7d_avg_kg: null,
     });
   }
