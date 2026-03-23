@@ -28,7 +28,9 @@ main { max-width: 1120px; margin: 0 auto; padding: 32px 20px 56px; }
 button { background: var(--accent); color: #08111f; border: none; border-radius: 999px; padding: 10px 16px; font-weight: 700; cursor: pointer; }
 button.secondary { background: var(--panel-soft); color: var(--text); }
 .table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
-.table th, .table td { padding: 10px 0; border-bottom: 1px solid var(--border); text-align: left; }
+.table th, .table td { padding: 11px 10px; border-bottom: 1px solid var(--border); text-align: center; white-space: nowrap; }
+.table th:first-child, .table td:first-child { padding-left: 0; text-align: left; }
+.table th:last-child, .table td:last-child { padding-right: 0; }
 .table th { color: var(--muted); font-weight: 600; }
 .small { font-size: 0.88rem; color: var(--muted); }
 .badge { display: inline-flex; padding: 6px 10px; border-radius: 999px; background: rgba(116, 192, 252, 0.16); color: var(--good); font-size: 0.85rem; }
@@ -37,3 +39,6 @@ button.secondary { background: var(--panel-soft); color: var(--text); }
 .panelHeader { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 12px; }
 .code { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.87rem; color: var(--muted); }
 .notice { background: rgba(125,211,252,0.08); border: 1px solid rgba(125,211,252,0.2); color: #c8f0ff; border-radius: 14px; padding: 14px 16px; }
+.tableWrap { width: 100%; overflow-x: auto; }
+.secondaryCard { margin-top: 16px; background: rgba(19, 26, 46, 0.78); }
+.syncTable { font-size: 0.9rem; }
