@@ -84,6 +84,32 @@ function formatDayLabel(value: string) {
   }).format(parsed);
 }
 
+function formatMonthLabel(value: string) {
+  const parsed = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    year: '2-digit',
+    timeZone: 'UTC',
+  }).format(parsed).replace(' ', " '");
+}
+
+function getMonthTicks(rows: TrendRow[]) {
+  const ticks: Array<{ index: number; label: string }> = [];
+  let lastMonthKey: string | null = null;
+
+  rows.forEach((row, index) => {
+    const parsed = new Date(`${row.day}T00:00:00Z`);
+    if (Number.isNaN(parsed.getTime())) return;
+    const monthKey = `${parsed.getUTCFullYear()}-${String(parsed.getUTCMonth() + 1).padStart(2, '0')}`;
+    if (monthKey === lastMonthKey) return;
+    lastMonthKey = monthKey;
+    ticks.push({ index, label: formatMonthLabel(row.day) });
+  });
+
+  return ticks;
+}
+
 function modeConfig(mode: Mode, rows: TrendRow[]): ModeConfig {
   if (mode === 'weight') {
     return {
@@ -316,6 +342,7 @@ export function TrendChart({ rows }: { rows: TrendRow[] }) {
   const ticks = extent.ticks;
   const firstDay = sortedRows[0]?.day;
   const lastDay = sortedRows.at(-1)?.day;
+  const monthTicks = getMonthTicks(sortedRows);
 
   return (
     <div>
@@ -402,16 +429,15 @@ export function TrendChart({ rows }: { rows: TrendRow[] }) {
               />
             );
           })}
-          {firstDay ? (
-            <text x={PLOT_PADDING.left} y={CHART_HEIGHT - 4} textAnchor="start" className="chartLabel">
-              {formatDayLabel(firstDay)}
-            </text>
-          ) : null}
-          {lastDay ? (
-            <text x={CHART_WIDTH - PLOT_PADDING.right} y={CHART_HEIGHT - 4} textAnchor="end" className="chartLabel">
-              {formatDayLabel(lastDay)}
-            </text>
-          ) : null}
+          {monthTicks.map((tick, tickIndex) => {
+            const x = xPosition(tick.index, sortedRows.length);
+            const anchor = tickIndex === 0 ? 'start' : tickIndex === monthTicks.length - 1 ? 'end' : 'middle';
+            return (
+              <text key={`${tick.label}-${tick.index}`} x={x} y={CHART_HEIGHT - 4} textAnchor={anchor} className="chartLabel">
+                {tick.label}
+              </text>
+            );
+          })}
         </svg>
       </div>
 
