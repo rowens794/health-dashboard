@@ -13,7 +13,8 @@
 html, body { margin: 0; padding: 0; background: linear-gradient(180deg, #0b1020 0%, #0d1327 100%); color: var(--text); font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
 a { color: inherit; }
 main { max-width: 1120px; margin: 0 auto; padding: 32px 20px 56px; }
-.header { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 24px; }
+.header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 24px; }
+.headerActions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 .title { font-size: 2rem; font-weight: 700; margin: 0; }
 .subtitle { color: var(--muted); margin-top: 8px; }
 .grid { display: grid; gap: 16px; }
@@ -25,6 +26,7 @@ main { max-width: 1120px; margin: 0 auto; padding: 32px 20px 56px; }
 .metricValue { font-size: 2rem; font-weight: 700; }
 .metricSub { color: var(--muted); margin-top: 8px; font-size: 0.95rem; }
 .actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.actionsCompact { justify-content: flex-end; }
 button { background: var(--accent); color: #08111f; border: none; border-radius: 999px; padding: 10px 16px; font-weight: 700; cursor: pointer; }
 button.secondary { background: var(--panel-soft); color: var(--text); }
 .table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
@@ -35,10 +37,80 @@ button.secondary { background: var(--panel-soft); color: var(--text); }
 .small { font-size: 0.88rem; color: var(--muted); }
 .badge { display: inline-flex; padding: 6px 10px; border-radius: 999px; background: rgba(116, 192, 252, 0.16); color: var(--good); font-size: 0.85rem; }
 .chartWrap { width: 100%; overflow-x: auto; }
-.chartSvg { width: 100%; min-height: 260px; }
+.chartSvg { width: 100%; min-height: 320px; }
 .panelHeader { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 12px; }
+.trendHeader { margin-bottom: 8px; }
 .code { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.87rem; color: var(--muted); }
 .notice { background: rgba(125,211,252,0.08); border: 1px solid rgba(125,211,252,0.2); color: #c8f0ff; border-radius: 14px; padding: 14px 16px; }
 .tableWrap { width: 100%; overflow-x: auto; }
+.tableCard { margin-top: 16px; }
 .secondaryCard { margin-top: 16px; background: rgba(19, 26, 46, 0.78); }
 .syncTable { font-size: 0.9rem; }
+
+.modeButtons { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.modeButton {
+  background: var(--panel-soft);
+  color: var(--text);
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: 8px 14px;
+}
+.modeButton.active {
+  background: rgba(116, 192, 252, 0.2);
+  border-color: rgba(116, 192, 252, 0.5);
+  color: #dff4ff;
+}
+
+.chartTitleRow {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 8px;
+}
+.chartModeTitle { font-size: 1.08rem; font-weight: 700; }
+.chartRangeLabel { text-align: right; }
+
+.chartAxis { stroke: rgba(255,255,255,0.18); }
+.chartGridLine { stroke: rgba(255,255,255,0.1); stroke-dasharray: 3 6; }
+.chartLabel { fill: var(--muted); font-size: 12px; }
+
+.chartLegend { display: flex; flex-wrap: wrap; gap: 10px 14px; margin-top: 8px; }
+.legendItem { display: inline-flex; align-items: center; gap: 8px; }
+.legendSwatch { width: 16px; height: 4px; border-radius: 999px; display: inline-block; }
+
+.seriesWeightDaily { stroke: #7dd3fc; background: #7dd3fc; }
+.seriesWeightAvg { stroke: #c0ebff; background: #c0ebff; }
+.seriesCaloriesDaily { stroke: #ffd166; background: #ffd166; }
+.seriesCaloriesAvg { stroke: #ffe39b; background: #ffe39b; }
+.seriesStepsDaily { stroke: #72efdd; background: #72efdd; }
+.seriesStepsAvg { stroke: #a7f3d0; background: #a7f3d0; }
+.seriesProteinDaily { stroke: #ff8fab; background: #ff8fab; }
+.seriesProteinAvg { stroke: #ffc2d1; background: #ffc2d1; }
+.seriesFatDaily { stroke: #b197fc; background: #b197fc; }
+.seriesFatAvg { stroke: #d0bfff; background: #d0bfff; }
+.seriesCarbsDaily { stroke: #4cc9f0; background: #4cc9f0; }
+.seriesCarbsAvg { stroke: #90e0ef; background: #90e0ef; }
+
+.summaryWrap { margin-top: 12px; overflow-x: auto; }
+.summaryTable { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+.summaryTable th,
+.summaryTable td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  white-space: nowrap;
+}
+.summaryTable th:first-child,
+.summaryTable td:first-child {
+  text-align: left;
+  padding-left: 0;
+}
+.summaryTable th:last-child,
+.summaryTable td:last-child {
+  padding-right: 0;
+}
+.summaryTable th { color: var(--muted); font-weight: 600; }
+
+@media (max-width: 900px) {
+  .headerActions { justify-content: flex-start; }
+}

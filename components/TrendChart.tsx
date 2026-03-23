@@ -1,52 +1,449 @@
-const KG_TO_LB = 2.2046226218;
+'use client';
 
-type Point = {
-  measured_at: string;
+import { useMemo, useState } from 'react';
+
+const KG_TO_LB = 2.2046226218;
+const CHART_WIDTH = 1100;
+const CHART_HEIGHT = 320;
+const PLOT_PADDING = { top: 20, right: 20, bottom: 34, left: 50 };
+
+type TrendRow = {
+  day: string;
   weight_kg: number | null;
-  body_fat_pct: number | null;
+  weight_7d_avg_kg: number | null;
+  calories: number | null;
+  calories_7d_avg: number | null;
+  steps: number | null;
+  steps_7d_avg: number | null;
+  protein_g: number | null;
+  protein_7d_avg_g: number | null;
+  fat_g: number | null;
+  fat_7d_avg_g: number | null;
+  carbs_g: number | null;
+  carbs_7d_avg_g: number | null;
 };
 
-function toLb(valueKg: number) {
+type Mode = 'weight' | 'calories' | 'steps' | 'macros';
+
+type Series = {
+  label: string;
+  colorClass: string;
+  values: Array<number | null>;
+  dashed?: boolean;
+};
+
+type SummaryRow = {
+  label: string;
+  daily: number | null;
+  average: number | null;
+  formatter: (value: number | null) => string;
+};
+
+type ModeConfig = {
+  title: string;
+  subtitle: string;
+  series: Series[];
+  summaryRows: SummaryRow[];
+};
+
+const MODES: Array<{ id: Mode; label: string }> = [
+  { id: 'weight', label: 'Weight' },
+  { id: 'calories', label: 'Calories' },
+  { id: 'steps', label: 'Steps' },
+  { id: 'macros', label: 'Macros' },
+];
+
+function toLb(valueKg: number | null) {
+  if (valueKg == null) return null;
   return valueKg * KG_TO_LB;
 }
 
-export function TrendChart({ points }: { points: Point[] }) {
-  const clean = points.filter((point) => point.weight_kg != null);
-  if (clean.length < 2) {
-    return <div className="small">Need at least two measurements for a chart.</div>;
+function formatWeight(value: number | null) {
+  return value == null ? '—' : `${value.toFixed(1)} lb`;
+}
+
+function formatCalories(value: number | null) {
+  return value == null ? '—' : `${Math.round(value).toLocaleString()} kcal`;
+}
+
+function formatSteps(value: number | null) {
+  return value == null ? '—' : Math.round(value).toLocaleString();
+}
+
+function formatGrams(value: number | null) {
+  return value == null ? '—' : `${Math.round(value)} g`;
+}
+
+function formatDayLabel(value: string) {
+  const parsed = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(parsed);
+}
+
+function modeConfig(mode: Mode, rows: TrendRow[]): ModeConfig {
+  if (mode === 'weight') {
+    return {
+      title: 'Weight Trend',
+      subtitle: 'Daily weight and rolling 7-day average.',
+      series: [
+        {
+          label: 'Daily weight',
+          colorClass: 'seriesWeightDaily',
+          values: rows.map((row) => toLb(row.weight_kg)),
+        },
+        {
+          label: '7-day avg',
+          colorClass: 'seriesWeightAvg',
+          values: rows.map((row) => toLb(row.weight_7d_avg_kg)),
+          dashed: true,
+        },
+      ],
+      summaryRows: [
+        {
+          label: 'Weight',
+          daily: toLb(rows.at(-1)?.weight_kg ?? null),
+          average: toLb(rows.at(-1)?.weight_7d_avg_kg ?? null),
+          formatter: formatWeight,
+        },
+      ],
+    };
   }
 
-  const width = 720;
-  const height = 260;
-  const padding = 28;
-  const weights = clean.map((point) => point.weight_kg ?? 0);
-  const min = Math.min(...weights);
-  const max = Math.max(...weights);
-  const range = Math.max(max - min, 1);
+  if (mode === 'calories') {
+    return {
+      title: 'Calories Trend',
+      subtitle: 'Daily calories and rolling 7-day average.',
+      series: [
+        {
+          label: 'Daily calories',
+          colorClass: 'seriesCaloriesDaily',
+          values: rows.map((row) => row.calories),
+        },
+        {
+          label: '7-day avg',
+          colorClass: 'seriesCaloriesAvg',
+          values: rows.map((row) => row.calories_7d_avg),
+          dashed: true,
+        },
+      ],
+      summaryRows: [
+        {
+          label: 'Calories',
+          daily: rows.at(-1)?.calories ?? null,
+          average: rows.at(-1)?.calories_7d_avg ?? null,
+          formatter: formatCalories,
+        },
+      ],
+    };
+  }
 
-  const path = clean
-    .map((point, index) => {
-      const x = padding + (index / (clean.length - 1)) * (width - padding * 2);
-      const y = height - padding - (((point.weight_kg ?? min) - min) / range) * (height - padding * 2);
-      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
-    })
-    .join(' ');
+  if (mode === 'steps') {
+    return {
+      title: 'Steps Trend',
+      subtitle: 'Daily steps and rolling 7-day average.',
+      series: [
+        {
+          label: 'Daily steps',
+          colorClass: 'seriesStepsDaily',
+          values: rows.map((row) => row.steps),
+        },
+        {
+          label: '7-day avg',
+          colorClass: 'seriesStepsAvg',
+          values: rows.map((row) => row.steps_7d_avg),
+          dashed: true,
+        },
+      ],
+      summaryRows: [
+        {
+          label: 'Steps',
+          daily: rows.at(-1)?.steps ?? null,
+          average: rows.at(-1)?.steps_7d_avg ?? null,
+          formatter: formatSteps,
+        },
+      ],
+    };
+  }
+
+  return {
+    title: 'Macros Trend',
+    subtitle: 'Daily and 7-day averages for protein, fat, and carbs.',
+    series: [
+      {
+        label: 'Protein daily',
+        colorClass: 'seriesProteinDaily',
+        values: rows.map((row) => row.protein_g),
+      },
+      {
+        label: 'Protein 7-day avg',
+        colorClass: 'seriesProteinAvg',
+        values: rows.map((row) => row.protein_7d_avg_g),
+        dashed: true,
+      },
+      {
+        label: 'Fat daily',
+        colorClass: 'seriesFatDaily',
+        values: rows.map((row) => row.fat_g),
+      },
+      {
+        label: 'Fat 7-day avg',
+        colorClass: 'seriesFatAvg',
+        values: rows.map((row) => row.fat_7d_avg_g),
+        dashed: true,
+      },
+      {
+        label: 'Carbs daily',
+        colorClass: 'seriesCarbsDaily',
+        values: rows.map((row) => row.carbs_g),
+      },
+      {
+        label: 'Carbs 7-day avg',
+        colorClass: 'seriesCarbsAvg',
+        values: rows.map((row) => row.carbs_7d_avg_g),
+        dashed: true,
+      },
+    ],
+    summaryRows: [
+      {
+        label: 'Protein',
+        daily: rows.at(-1)?.protein_g ?? null,
+        average: rows.at(-1)?.protein_7d_avg_g ?? null,
+        formatter: formatGrams,
+      },
+      {
+        label: 'Fat',
+        daily: rows.at(-1)?.fat_g ?? null,
+        average: rows.at(-1)?.fat_7d_avg_g ?? null,
+        formatter: formatGrams,
+      },
+      {
+        label: 'Carbs',
+        daily: rows.at(-1)?.carbs_g ?? null,
+        average: rows.at(-1)?.carbs_7d_avg_g ?? null,
+        formatter: formatGrams,
+      },
+    ],
+  };
+}
+
+function getExtent(series: Series[]) {
+  const values = series
+    .flatMap((line) => line.values)
+    .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+
+  if (!values.length) {
+    return { min: 0, max: 1, ticks: [0, 1] };
+  }
+
+  const rawMin = Math.min(...values);
+  const rawMax = Math.max(...values);
+  const tickStep = chooseTickStep(rawMin, rawMax);
+  const min = Math.floor(rawMin / tickStep) * tickStep;
+  const max = Math.ceil(rawMax / tickStep) * tickStep;
+  const ticks: number[] = [];
+  for (let value = min; value <= max + tickStep * 0.5; value += tickStep) {
+    ticks.push(Number(value.toFixed(6)));
+  }
+
+  if (ticks.length < 2) {
+    ticks.push(min + tickStep);
+  }
+
+  return { min, max, ticks };
+}
+
+function chooseTickStep(rawMin: number, rawMax: number) {
+  const span = Math.max(rawMax - rawMin, 1);
+  const roughStep = span / 5;
+  const magnitude = 10 ** Math.floor(Math.log10(roughStep));
+  const normalized = roughStep / magnitude;
+
+  let stepMultiplier = 1;
+  if (normalized <= 1) stepMultiplier = 1;
+  else if (normalized <= 2) stepMultiplier = 2;
+  else if (normalized <= 2.5) stepMultiplier = 2.5;
+  else if (normalized <= 5) stepMultiplier = 5;
+  else stepMultiplier = 10;
+
+  return stepMultiplier * magnitude;
+}
+
+function xPosition(index: number, count: number) {
+  const width = CHART_WIDTH - PLOT_PADDING.left - PLOT_PADDING.right;
+  if (count <= 1) return PLOT_PADDING.left;
+  return PLOT_PADDING.left + (index / (count - 1)) * width;
+}
+
+function yPosition(value: number, min: number, max: number) {
+  const height = CHART_HEIGHT - PLOT_PADDING.top - PLOT_PADDING.bottom;
+  return PLOT_PADDING.top + ((max - value) / (max - min)) * height;
+}
+
+function toPath(values: Array<number | null>, min: number, max: number) {
+  let path = '';
+  for (let index = 0; index < values.length; index += 1) {
+    const value = values[index];
+    if (value == null) continue;
+
+    const command = index > 0 && values[index - 1] != null ? 'L' : 'M';
+    const x = xPosition(index, values.length);
+    const y = yPosition(value, min, max);
+    path += `${command}${x.toFixed(2)} ${y.toFixed(2)} `;
+  }
+  return path.trim();
+}
+
+export function TrendChart({ rows }: { rows: TrendRow[] }) {
+  const [mode, setMode] = useState<Mode>('weight');
+
+  const sortedRows = useMemo(
+    () => [...rows].sort((left, right) => left.day.localeCompare(right.day)),
+    [rows],
+  );
+  const config = useMemo(() => modeConfig(mode, sortedRows), [mode, sortedRows]);
+  const extent = useMemo(() => getExtent(config.series), [config.series]);
+
+  if (!rows.length) {
+    return <div className="small">No imported data yet. Run a sync to populate trends.</div>;
+  }
+
+  const min = extent.min;
+  const max = extent.max;
+  const ticks = extent.ticks;
+  const firstDay = sortedRows[0]?.day;
+  const lastDay = sortedRows.at(-1)?.day;
 
   return (
-    <div className="chartWrap">
-      <svg viewBox={`0 0 ${width} ${height}`} className="chartSvg" role="img" aria-label="Weight trend chart">
-        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="rgba(255,255,255,0.16)" />
-        <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="rgba(255,255,255,0.16)" />
-        <path d={path} fill="none" stroke="#74c0fc" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
-        {clean.map((point, index) => {
-          const x = padding + (index / (clean.length - 1)) * (width - padding * 2);
-          const y = height - padding - (((point.weight_kg ?? min) - min) / range) * (height - padding * 2);
-          return <circle key={point.measured_at} cx={x} cy={y} r="4" fill="#7dd3fc" />;
-        })}
-        <text x={padding} y={18} fill="#9aa6c5" fontSize="12">{toLb(max).toFixed(1)} lb</text>
-        <text x={padding} y={height - 8} fill="#9aa6c5" fontSize="12">{toLb(min).toFixed(1)} lb</text>
-      </svg>
-      <div className="small">Weight trend across the most recent imported measurements.</div>
+    <div>
+      <div className="panelHeader trendHeader">
+        <div>
+          <h2 style={{ margin: 0 }}>Trends</h2>
+          <div className="small">Daily lines + 7-day smoothing for fast signal checks.</div>
+        </div>
+      </div>
+
+      <div className="modeButtons" role="tablist" aria-label="Trend mode">
+        {MODES.map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            className={`modeButton${mode === option.id ? ' active' : ''}`}
+            onClick={() => setMode(option.id)}
+            aria-pressed={mode === option.id}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="chartTitleRow">
+        <div>
+          <div className="chartModeTitle">{config.title}</div>
+          <div className="small">{config.subtitle}</div>
+        </div>
+        <div className="small chartRangeLabel">
+          {firstDay && lastDay ? `${formatDayLabel(firstDay)} - ${formatDayLabel(lastDay)}` : '—'}
+        </div>
+      </div>
+
+      <div className="chartWrap">
+        <svg viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} className="chartSvg" role="img" aria-label={`${config.title} chart`}>
+          <line
+            x1={PLOT_PADDING.left}
+            y1={CHART_HEIGHT - PLOT_PADDING.bottom}
+            x2={CHART_WIDTH - PLOT_PADDING.right}
+            y2={CHART_HEIGHT - PLOT_PADDING.bottom}
+            className="chartAxis"
+          />
+          <line
+            x1={PLOT_PADDING.left}
+            y1={PLOT_PADDING.top}
+            x2={PLOT_PADDING.left}
+            y2={CHART_HEIGHT - PLOT_PADDING.bottom}
+            className="chartAxis"
+          />
+
+          {ticks.map((tick) => {
+            const y = yPosition(tick, min, max);
+            return (
+              <g key={tick}>
+                <line
+                  x1={PLOT_PADDING.left}
+                  y1={y}
+                  x2={CHART_WIDTH - PLOT_PADDING.right}
+                  y2={y}
+                  className="chartGridLine"
+                />
+                <text x={PLOT_PADDING.left - 8} y={y + 4} textAnchor="end" className="chartLabel">
+                  {Number.isInteger(tick) ? tick.toString() : tick.toFixed(1)}
+                </text>
+              </g>
+            );
+          })}
+
+          {config.series.map((line) => {
+            const path = toPath(line.values, min, max);
+            if (!path) return null;
+
+            return (
+              <path
+                key={line.label}
+                d={path}
+                fill="none"
+                className={line.colorClass}
+                strokeWidth={line.dashed ? 2.5 : 3}
+                strokeDasharray={line.dashed ? '6 5' : undefined}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            );
+          })}
+          {firstDay ? (
+            <text x={PLOT_PADDING.left} y={CHART_HEIGHT - 4} textAnchor="start" className="chartLabel">
+              {formatDayLabel(firstDay)}
+            </text>
+          ) : null}
+          {lastDay ? (
+            <text x={CHART_WIDTH - PLOT_PADDING.right} y={CHART_HEIGHT - 4} textAnchor="end" className="chartLabel">
+              {formatDayLabel(lastDay)}
+            </text>
+          ) : null}
+        </svg>
+      </div>
+
+      <div className="chartLegend">
+        {config.series.map((line) => (
+          <div className="legendItem" key={line.label}>
+            <span className={`legendSwatch ${line.colorClass}`}></span>
+            <span className="small">{line.label}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="summaryWrap">
+        <table className="summaryTable">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>Daily</th>
+              <th>7-day avg</th>
+            </tr>
+          </thead>
+          <tbody>
+            {config.summaryRows.map((row) => (
+              <tr key={row.label}>
+                <td>{row.label}</td>
+                <td>{row.formatter(row.daily)}</td>
+                <td>{row.formatter(row.average)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
