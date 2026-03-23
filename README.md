@@ -16,7 +16,7 @@ Local-first health dashboard that imports RENPHO body metrics and MyFitnessPal d
 - MyFitnessPal historical CSV backlog:
   - `data/myfitnesspal-diary-rowens794-2025-06-01-to-2026-03-19.csv`
 - Garmin:
-  - groundwork schema + sync hook exists, but local refresh/export discovery is still a blocker
+  - Garmin Connect web sync via local Python client + stored credentials
 
 ## What the app now shows
 
@@ -30,15 +30,18 @@ Local-first health dashboard that imports RENPHO body metrics and MyFitnessPal d
 - Sync:
   - recent per-source sync runs (`renpho`, `myfitnesspal`, `garmin`)
   - stale-source notices for RENPHO and MyFitnessPal
-- Garmin groundwork:
-  - latest imported step day if configured
-  - otherwise explicit blocker/configuration notice
+- Garmin:
+  - latest imported step day from Garmin Connect web
+  - sync/error notice if Garmin auth or fetch fails
 
 ## Setup
 
 ```bash
 cd /Users/ryan-desktop/.openclaw/workspace/health-dashboard
 npm install
+python3 -m venv .venv
+source .venv/bin/activate
+pip install requests garminconnect
 npm run sync
 npm run dev
 ```
@@ -77,9 +80,21 @@ curl -X POST 'http://localhost:3000/api/sync?trigger=scheduled'
 - `MYFITNESSPAL_CSV_PATH`
   - override MyFitnessPal CSV path
   - default: `data/myfitnesspal-diary-rowens794-2025-06-01-to-2026-03-19.csv`
-- `GARMIN_STEPS_CSV_PATH`
-  - optional Garmin CSV path for step import groundwork
-  - expected columns include a date field (`date`, `day`, or `step_date`) and a steps field (`steps`, `step_count`, or `total_steps`)
+- `GARMIN_EMAIL`
+  - Garmin Connect login email
+- `GARMIN_PASSWORD`
+  - Garmin Connect login password
+- `GARMIN_SYNC_START_DATE`
+  - first day to backfill for Garmin steps
+  - default: `2025-06-01`
+- `GARMIN_SYNC_END_DATE`
+  - optional end day override; defaults to today
+- `GARMIN_TOKENSTORE_PATH`
+  - optional OAuth/session token cache path
+  - default: `data/garmin-tokenstore.json`
+- `GARMIN_PYTHON_PATH`
+  - optional Python interpreter path for the Garmin client helper
+  - default: `.venv/bin/python`
 - `HEALTH_DASHBOARD_DB_PATH`
   - override local app DB location
 
@@ -115,21 +130,24 @@ launchctl kickstart -k gui/$(id -u)/com.ryan.health-dashboard.sync-daily
 - `nutrition_daily`
   - normalized MyFitnessPal daily calories/macros
 - `daily_steps`
-  - Garmin daily step groundwork table
+  - Garmin daily step totals from Garmin Connect web
 - `sync_runs`
   - per-source import run history
 - `source_connectors`
   - source registry and status notes
 
-## Garmin blocker (explicit)
+## Garmin sync
 
-Groundwork is complete for schema/import wiring, but exact local Garmin app refresh/export discovery on this machine is still pending.
+Garmin now uses Garmin Connect web via a local Python helper built on the `garminconnect` client library.
 
-Current blocker:
+Current behavior:
 
-- we do not yet have a confirmed, repeatable local command/path that pulls the latest Garmin step datapoints into a known file/db location
+- reads `GARMIN_EMAIL` / `GARMIN_PASSWORD` from `.env.local` or env
+- caches session/token state in `data/garmin-tokenstore.json`
+- backfills daily step totals from `GARMIN_SYNC_START_DATE` through today (or `GARMIN_SYNC_END_DATE` if set)
+- stores normalized results in `daily_steps`
 
-Until that is confirmed, Garmin sync runs are logged as `blocked` unless `GARMIN_STEPS_CSV_PATH` is set to a valid local export.
+If Garmin sync fails, the failure is logged in `sync_runs` and shown in the dashboard sync status section.
 
 ## Notes
 

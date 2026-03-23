@@ -1,78 +1,128 @@
 import fs from 'node:fs';
-import { GARMIN_STEPS_CSV_PATH } from './config';
-import { parseCsvRecords } from './csv';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import {
+  GARMIN_EMAIL,
+  GARMIN_PASSWORD,
+  GARMIN_PYTHON_PATH,
+  GARMIN_SYNC_END_DATE,
+  GARMIN_SYNC_START_DATE,
+  GARMIN_TOKENSTORE_PATH,
+} from './config';
 import { ensureAppDb, hasExistingDailySteps, insertSyncRun, upsertDailySteps } from './db';
 import type { DailyStepsRecord, SourceSyncSummary } from './types';
 
-type GarminCsvRow = Record<string, string>;
+type GarminFetchPayload = {
+  ok: boolean;
+  error?: string;
+  startDate?: string;
+  endDate?: string;
+  rows?: Array<{
+    date: string;
+    steps: number | null;
+    source_type?: string | null;
+    source_user_id?: string | null;
+  }>;
+};
 
 export function syncGarmin(triggerType = 'manual'): SourceSyncSummary {
   ensureAppDb();
   const startedAt = new Date().toISOString();
-  const csvPath = GARMIN_STEPS_CSV_PATH;
 
-  if (!csvPath) {
+  if (!GARMIN_EMAIL || !GARMIN_PASSWORD) {
     return blockedSummary(
       triggerType,
       startedAt,
-      'GARMIN_STEPS_CSV_PATH is not configured. Local app refresh/export discovery is still required.',
+      'GARMIN_EMAIL and GARMIN_PASSWORD are not configured. Add them to .env.local for Garmin Connect web sync.',
     );
   }
 
-  if (!fs.existsSync(csvPath)) {
+  try {
+    const payload = fetchGarminSteps();
+    if (!payload.ok) {
+      return blockedSummary(triggerType, startedAt, payload.error || 'Garmin fetch failed.');
+    }
+
+    const rows = payload.rows ?? [];
+    let inserted = 0;
+    let updated = 0;
+    let skipped = 0;
+    let lastRecordAt: string | null = null;
+
+    for (const row of rows) {
+      const record = normalizeGarminRow(row);
+      if (!record) {
+        skipped += 1;
+        continue;
+      }
+
+      const existedBefore = hasExistingDailySteps('garmin', record.stepDate);
+      upsertDailySteps(record);
+      if (existedBefore) {
+        updated += 1;
+      } else {
+        inserted += 1;
+      }
+      lastRecordAt = `${record.stepDate}T00:00:00.000Z`;
+    }
+
+    const finishedAt = new Date().toISOString();
+    const notes = `Imported Garmin Connect web steps for ${payload.startDate ?? 'unknown start'} to ${payload.endDate ?? 'unknown end'} via Python client.${skipped > 0 ? ` Skipped ${skipped} invalid row(s).` : ''}`;
+    insertSyncRun({
+      source: 'garmin',
+      triggerType,
+      insertedCount: inserted,
+      updatedCount: updated,
+      scannedCount: rows.length,
+      startedAt,
+      finishedAt,
+      notes,
+    });
+
+    return {
+      source: 'garmin',
+      status: 'ok',
+      inserted,
+      updated,
+      scanned: rows.length,
+      lastRecordAt,
+      message: notes,
+    };
+  } catch (error) {
     return blockedSummary(
       triggerType,
       startedAt,
-      `Configured GARMIN_STEPS_CSV_PATH does not exist: ${csvPath}`,
+      error instanceof Error ? error.message : 'Garmin fetch failed.',
     );
   }
+}
 
-  const content = fs.readFileSync(csvPath, 'utf8');
-  const rows = parseCsvRecords(content);
-  let inserted = 0;
-  let updated = 0;
-  let skipped = 0;
-  let lastRecordAt: string | null = null;
+function fetchGarminSteps(): GarminFetchPayload {
+  ensurePythonEnvironment();
 
-  for (const row of rows) {
-    const record = normalizeGarminRow(row, csvPath);
-    if (!record) {
-      skipped += 1;
-      continue;
-    }
-
-    const existedBefore = hasExistingDailySteps('garmin', record.stepDate);
-    upsertDailySteps(record);
-    if (existedBefore) {
-      updated += 1;
-    } else {
-      inserted += 1;
-    }
-    lastRecordAt = `${record.stepDate}T00:00:00.000Z`;
-  }
-
-  const finishedAt = new Date().toISOString();
-  const notes = `Imported Garmin groundwork data from ${csvPath}.${skipped > 0 ? ` Skipped ${skipped} invalid row(s).` : ''}`;
-  insertSyncRun({
-    source: 'garmin',
-    triggerType,
-    insertedCount: inserted,
-    updatedCount: updated,
-    scannedCount: rows.length,
-    startedAt,
-    finishedAt,
-    notes,
+  const scriptPath = path.join(process.cwd(), 'scripts', 'garmin_fetch_steps.py');
+  const output = execFileSync(GARMIN_PYTHON_PATH, [scriptPath], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      GARMIN_EMAIL,
+      GARMIN_PASSWORD,
+      GARMIN_TOKENSTORE: GARMIN_TOKENSTORE_PATH,
+      GARMIN_SYNC_START_DATE,
+      GARMIN_SYNC_END_DATE,
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
 
-  return {
-    source: 'garmin',
-    status: 'ok',
-    inserted,
-    updated,
-    scanned: rows.length,
-    lastRecordAt,
-    message: notes,
-  };
+  return JSON.parse(output) as GarminFetchPayload;
+}
+
+function ensurePythonEnvironment() {
+  const pythonPath = GARMIN_PYTHON_PATH;
+  if (!fs.existsSync(pythonPath)) {
+    throw new Error(`Configured GARMIN_PYTHON_PATH does not exist: ${pythonPath}`);
+  }
 }
 
 function blockedSummary(triggerType: string, startedAt: string, message: string): SourceSyncSummary {
@@ -99,13 +149,8 @@ function blockedSummary(triggerType: string, startedAt: string, message: string)
   };
 }
 
-function normalizeGarminRow(row: GarminCsvRow, sourcePath: string): DailyStepsRecord | null {
-  const dateValue = firstValue(row, ['date', 'day', 'step_date']);
-  const stepsValue = firstValue(row, ['steps', 'step_count', 'total_steps']);
-  const sourceUserId = firstValue(row, ['user_id', 'source_user_id']);
-  const sourceType = firstValue(row, ['source_type', 'activity_type']) ?? 'csv-import';
-
-  const stepDate = normalizeDate(dateValue);
+function normalizeGarminRow(row: NonNullable<GarminFetchPayload['rows']>[number]): DailyStepsRecord | null {
+  const stepDate = normalizeDate(row.date);
   if (!stepDate) return null;
 
   const stepDateEpoch = Math.floor(new Date(`${stepDate}T00:00:00Z`).getTime() / 1000);
@@ -113,31 +158,14 @@ function normalizeGarminRow(row: GarminCsvRow, sourcePath: string): DailyStepsRe
 
   return {
     source: 'garmin',
-    sourceUserId: sourceUserId ?? null,
+    sourceUserId: row.source_user_id ?? null,
     stepDate,
     stepDateEpoch,
-    steps: nullableInteger(stepsValue),
-    sourceType,
-    sourcePath,
+    steps: nullableInteger(row.steps),
+    sourceType: row.source_type ?? 'garmin-connect-web',
+    sourcePath: 'https://connect.garmin.com/',
     importedAt: new Date().toISOString(),
   };
-}
-
-function firstValue(row: GarminCsvRow, candidateHeaders: string[]) {
-  for (const header of candidateHeaders) {
-    const direct = row[header];
-    if (direct) return direct.trim();
-
-    const normalizedMatch = Object.keys(row).find((key) => normalizeHeader(key) === normalizeHeader(header));
-    if (normalizedMatch && row[normalizedMatch]) {
-      return row[normalizedMatch].trim();
-    }
-  }
-  return null;
-}
-
-function normalizeHeader(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
 function normalizeDate(value: string | null) {
@@ -148,8 +176,8 @@ function normalizeDate(value: string | null) {
   return parsed.toISOString().slice(0, 10);
 }
 
-function nullableInteger(value: string | null) {
-  if (!value) return null;
-  const numeric = Number(value.replace(/,/g, ''));
+function nullableInteger(value: number | null | undefined) {
+  if (value == null) return null;
+  const numeric = Number(value);
   return Number.isFinite(numeric) ? Math.round(numeric) : null;
 }

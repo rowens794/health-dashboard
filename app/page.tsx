@@ -121,7 +121,7 @@ export default function HomePage() {
       <div className="header">
         <div>
           <h1 className="title">Health Dashboard</h1>
-          <div className="subtitle">Local dashboard for RENPHO body metrics and MyFitnessPal daily nutrition, with Garmin step import groundwork.</div>
+          <div className="subtitle">Local dashboard for RENPHO body metrics, MyFitnessPal daily nutrition, and Garmin Connect daily steps.</div>
         </div>
         <div className="badge">Local-only sync</div>
       </div>
@@ -319,8 +319,8 @@ export default function HomePage() {
       <section className="card" style={{ marginTop: 16 }}>
         <div className="panelHeader">
           <div>
-            <h2 style={{ margin: 0 }}>Garmin steps groundwork</h2>
-            <div className="small">Schema and sync scaffolding are ready; local refresh/export discovery is still pending.</div>
+            <h2 style={{ margin: 0 }}>Garmin daily steps</h2>
+            <div className="small">Pulled from Garmin Connect web and normalized into the local dashboard DB.</div>
           </div>
         </div>
         {latestSteps ? (
@@ -329,7 +329,7 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="small">
-            No Garmin steps imported yet. Configure <span className="code">GARMIN_STEPS_CSV_PATH</span> once the local app export path is confirmed.
+            No Garmin steps imported yet. Check Garmin credentials in <span className="code">.env.local</span> and rerun sync.
           </div>
         )}
       </section>

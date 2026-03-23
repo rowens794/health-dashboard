@@ -91,7 +91,7 @@ export function ensureAppDb() {
     VALUES
       ('renpho', 1, 'Enabled MVP source'),
       ('myfitnesspal', 1, 'Enabled CSV import source'),
-      ('garmin', 0, 'Groundwork only: waiting on local refresh/export discovery')
+      ('garmin', 1, 'Enabled Garmin Connect web sync')
     ON CONFLICT(source) DO UPDATE SET
       enabled = excluded.enabled,
       notes = excluded.notes;
