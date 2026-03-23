@@ -422,7 +422,8 @@ export function TrendChart({ rows }: { rows: TrendRow[] }) {
                 d={path}
                 fill="none"
                 className={line.colorClass}
-                strokeWidth={line.dashed ? 2.5 : 3}
+                strokeWidth={line.dashed ? 3.5 : 2}
+                strokeOpacity={line.dashed ? 0.95 : 0.55}
                 strokeDasharray={line.dashed ? '6 5' : undefined}
                 strokeLinecap="round"
                 strokeLinejoin="round"
