@@ -418,7 +418,7 @@ function toPath(values: Array<number | null>, min: number, max: number) {
 
 export function TrendChart({ rows }: { rows: TrendRow[] }) {
   const [mode, setMode] = useState<Mode>('weight');
-  const [hovered, setHovered] = useState<null | { x: number; y: number; label: string }>(null);
+  const [hovered, setHovered] = useState<null | { x: number; y: number; label: string; alignRight?: boolean }>(null);
 
   const sortedRows = useMemo(
     () => [...rows].sort((left, right) => left.day.localeCompare(right.day)),
@@ -474,7 +474,7 @@ export function TrendChart({ rows }: { rows: TrendRow[] }) {
       <div className="chartWrap">
         <div className="chartFrame">
           {hovered ? (
-            <div className="chartTooltip" style={{ left: hovered.x, top: hovered.y }}>
+            <div className={`chartTooltip${hovered.alignRight ? ' alignRight' : ''}`} style={{ left: hovered.x, top: hovered.y }}>
               {hovered.label}
             </div>
           ) : null}
@@ -529,20 +529,21 @@ export function TrendChart({ rows }: { rows: TrendRow[] }) {
                   strokeLinejoin="round"
                 />
                 {line.values.map((value, index) => {
-                  if (value == null || line.isGoal) return null;
+                  if (value == null || line.isGoal || !line.dashed) return null;
                   const x = xPosition(index, line.values.length);
                   const y = yPosition(value, min, max);
-                  const tooltip = `${line.label} • ${formatTooltipDay(sortedRows[index]?.day ?? '')} • ${formatTooltipValue(mode, line.label, value)}`;
+                  const tooltip = formatTooltipValue(mode, line.label, value);
+                  const alignRight = x > CHART_WIDTH - PLOT_PADDING.right - 140;
                   return (
                     <circle
                       key={`${line.label}-${sortedRows[index]?.day ?? index}`}
                       cx={x}
                       cy={y}
-                      r={8}
+                      r={10}
                       fill="transparent"
                       stroke="transparent"
-                      onMouseEnter={() => setHovered({ x, y: Math.max(16, y - 14), label: tooltip })}
-                      onMouseMove={() => setHovered({ x, y: Math.max(16, y - 14), label: tooltip })}
+                      onMouseEnter={() => setHovered({ x, y: Math.max(16, y - 14), label: tooltip, alignRight })}
+                      onMouseMove={() => setHovered({ x, y: Math.max(16, y - 14), label: tooltip, alignRight })}
                       onMouseLeave={() => setHovered(null)}
                     />
                   );

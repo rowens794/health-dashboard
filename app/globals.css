@@ -53,6 +53,9 @@ button.secondary { background: var(--panel-soft); color: var(--text); }
   box-shadow: 0 10px 24px rgba(0,0,0,0.28);
   z-index: 2;
 }
+.chartTooltip.alignRight {
+  transform: translate(-100%, calc(-100% - 8px));
+}
 .panelHeader { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 12px; }
 .trendHeader { margin-bottom: 8px; }
 .code { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.87rem; color: var(--muted); }
