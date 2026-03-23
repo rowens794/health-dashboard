@@ -1,40 +1,38 @@
 # health-dashboard
 
-Local-first health dashboard MVP focused on importing RENPHO body scale measurements into a separate app database, then serving a simple web UI.
+Local-first health dashboard that imports RENPHO body metrics and MyFitnessPal daily nutrition into a local SQLite app DB, then serves a Next.js UI.
 
 ## Stack
 
 - Next.js 15 + TypeScript
-- SQLite for the app database
-- `sqlite3` CLI for both source-db reads and local app-db writes
+- SQLite app DB (`data/health-dashboard.sqlite`)
+- macOS `sqlite3` CLI for DB reads/writes
+- CSV ingest for MyFitnessPal backlog
 
-That keeps the MVP pretty boring in a good way: one web app, one app DB, one importer.
+## Current data sources
 
-## What it does
-
-- Reads RENPHO data from:
+- RENPHO source DB (read-only):
   - `~/Library/Containers/60D3E105-BB1C-4728-8C12-6C8358ED5D76/Data/Documents/renphoHealth.sqlite`
-- Reads the source `bodyScale` table in **read-only mode**
-- Normalizes/imports these fields into the local app database:
-  - `timeStamp` → `measured_at` + `measured_at_epoch`
-  - `weight`
-  - `bodyfat`
-  - `bmi`
-  - `water`
-  - `muscle`
-  - `bone`
-  - `protein`
-  - `bmr`
-  - `bodyage`
-  - `userId`
-- Stores imported rows in `data/health-dashboard.sqlite`
-- Shows:
-  - latest weight
-  - latest body fat
-  - recent measurements
+- MyFitnessPal historical CSV backlog:
+  - `data/myfitnesspal-diary-rowens794-2025-06-01-to-2026-03-19.csv`
+- Garmin:
+  - groundwork schema + sync hook exists, but local refresh/export discovery is still a blocker
+
+## What the app now shows
+
+- RENPHO:
+  - latest weight/body-fat/BMI/body-composition cards
   - weight trend chart
-  - recent sync runs
-- Current UI display defaults to **lb** for weight, while imported source data remains stored in kg internally.
+  - recent imported measurements
+- MyFitnessPal:
+  - latest daily calories and macros (protein/carbs/fat)
+  - recent imported nutrition days
+- Sync:
+  - recent per-source sync runs (`renpho`, `myfitnesspal`, `garmin`)
+  - stale-source notices for RENPHO and MyFitnessPal
+- Garmin groundwork:
+  - latest imported step day if configured
+  - otherwise explicit blocker/configuration notice
 
 ## Setup
 
@@ -45,111 +43,95 @@ npm run sync
 npm run dev
 ```
 
-Then open `http://localhost:3000`.
+Open `http://localhost:3000`.
 
-For a more stable local server, build and run production on port 3001:
+For production serving on port 3001:
 
 ```bash
 npm run build
 PORT=3001 npm run start
 ```
 
-Then open `http://localhost:3001`.
+## Sync commands
 
-## Syncing
+`npm run sync` now runs the unified daily sync pipeline.
 
-### Manual sync
+- `npm run sync` (all sources: RENPHO + MyFitnessPal + Garmin attempt)
+- `npm run sync scheduled` (same, but trigger label is `scheduled`)
+- `npm run sync:renpho` (RENPHO only)
+- `npm run sync:myfitnesspal` (MyFitnessPal only)
+- `npm run sync:garmin` (Garmin only)
 
-Two easy paths:
-
-```bash
-npm run sync
-```
-
-or from the UI, click **Sync RENPHO now**.
-
-### One-shot endpoint
+HTTP path:
 
 ```bash
-curl -X POST http://localhost:3000/api/sync
+curl -X POST 'http://localhost:3000/api/sync?trigger=scheduled'
 ```
 
-### Scheduled / polling sync design
+`POST /api/sync` now runs the same multi-source sync pipeline and returns per-source results.
 
-This MVP does not install a daemon by itself. Instead, it exposes two simple hooks that can be scheduled externally:
+## Environment variables
 
-- CLI path: `npm run sync`
-- HTTP path: `POST /api/sync?trigger=scheduled`
+- `RENPHO_DB_PATH`
+  - override RENPHO sqlite source path
+- `MYFITNESSPAL_CSV_PATH`
+  - override MyFitnessPal CSV path
+  - default: `data/myfitnesspal-diary-rowens794-2025-06-01-to-2026-03-19.csv`
+- `GARMIN_STEPS_CSV_PATH`
+  - optional Garmin CSV path for step import groundwork
+  - expected columns include a date field (`date`, `day`, or `step_date`) and a steps field (`steps`, `step_count`, or `total_steps`)
+- `HEALTH_DASHBOARD_DB_PATH`
+  - override local app DB location
 
-That makes it easy to wire into `launchd`, cron, or another local scheduler later.
+## Sync scheduling and launchd
 
-Example `launchd` / cron idea:
-
-```bash
-*/30 * * * * cd /Users/ryan-desktop/.openclaw/workspace/health-dashboard && npm run sync >> sync.log 2>&1
-```
-
-### Persistent app serving with launchd
-
-A ready-to-use launchd plist template is included at:
+The repo includes two launchd plist templates:
 
 - `ops/com.ryan.health-dashboard.plist`
+  - runs the web server on port `3001`
+- `ops/com.ryan.health-dashboard.sync-daily.plist`
+  - runs `npm run sync scheduled` daily at `06:15`
 
-It runs the production server on port `3001`, restarts it automatically, and writes logs to:
-
-- `logs/health-dashboard.stdout.log`
-- `logs/health-dashboard.stderr.log`
-
-Typical install flow:
+Install example:
 
 ```bash
 cd /Users/ryan-desktop/.openclaw/workspace/health-dashboard
 mkdir -p logs
 npm run build
 cp ops/com.ryan.health-dashboard.plist ~/Library/LaunchAgents/
+cp ops/com.ryan.health-dashboard.sync-daily.plist ~/Library/LaunchAgents/
 launchctl unload ~/Library/LaunchAgents/com.ryan.health-dashboard.plist 2>/dev/null || true
+launchctl unload ~/Library/LaunchAgents/com.ryan.health-dashboard.sync-daily.plist 2>/dev/null || true
 launchctl load ~/Library/LaunchAgents/com.ryan.health-dashboard.plist
+launchctl load ~/Library/LaunchAgents/com.ryan.health-dashboard.sync-daily.plist
 launchctl kickstart -k gui/$(id -u)/com.ryan.health-dashboard
+launchctl kickstart -k gui/$(id -u)/com.ryan.health-dashboard.sync-daily
 ```
 
-Then open `http://localhost:3001`.
-
-## Architecture notes
-
-### Source DB access
-
-The importer uses the macOS `sqlite3` CLI with `-readonly` when querying the RENPHO database. The MVP only issues `SELECT` statements against the source DB.
-
-### Local app DB schema
-
-Main tables:
+## App DB schema (high-level)
 
 - `measurements`
-  - normalized imported measurements keyed by `(source, source_record_id)`
+  - normalized RENPHO body measurements
+- `nutrition_daily`
+  - normalized MyFitnessPal daily calories/macros
+- `daily_steps`
+  - Garmin daily step groundwork table
 - `sync_runs`
-  - import run history for manual vs scheduled syncs
+  - per-source import run history
 - `source_connectors`
-  - extension-point registry for future sources
+  - source registry and status notes
 
-### Current RENPHO sync triggering
+## Garmin blocker (explicit)
 
-- **UI button** → `POST /api/sync` with trigger `manual`
-- **CLI script** → `tsx scripts/sync-renpho.ts` with trigger `cli`
-- **Scheduler hook** → `POST /api/sync?trigger=scheduled` or `npm run sync scheduled`
+Groundwork is complete for schema/import wiring, but exact local Garmin app refresh/export discovery on this machine is still pending.
 
-The app currently re-imports the source dataset and upserts by RENPHO row id. That's fine for the MVP and keeps sync logic straightforward.
+Current blocker:
 
-## Extension points
+- we do not yet have a confirmed, repeatable local command/path that pulls the latest Garmin step datapoints into a known file/db location
 
-This project is RENPHO-only for now, but the database and connector table leave obvious room for:
-
-- MyFitnessPal nutrition/activity imports
-- Garmin activity/body metrics imports
-
-The intended shape is: each source gets its own importer, then normalizes into the shared `measurements`/related app tables.
+Until that is confirmed, Garmin sync runs are logged as `blocked` unless `GARMIN_STEPS_CSV_PATH` is set to a valid local export.
 
 ## Notes
 
-- The local app DB file is intentionally ignored by git.
-- If the RENPHO DB location changes, set `RENPHO_DB_PATH` before running sync.
-- If you want the app DB elsewhere, set `HEALTH_DASHBOARD_DB_PATH`.
+- The local SQLite DB files under `data/*.sqlite*` are git-ignored.
+- RENPHO source reads are performed in sqlite read-only mode.

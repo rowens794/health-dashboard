@@ -15,7 +15,10 @@ export function SyncButton() {
       if (!response.ok) {
         throw new Error(data.error || 'Sync failed');
       }
-      setStatus(`Imported ${data.summary.inserted} new / updated ${data.summary.updated} from ${data.summary.scanned} RENPHO rows.`);
+      const lines = (data.summary.results as Array<{ source: string; status: string; inserted: number; updated: number; scanned: number }>)
+        .map((result) => `${result.source}: ${result.status} (${result.inserted} new, ${result.updated} updated, ${result.scanned} scanned)`)
+        .join(' | ');
+      setStatus(lines || 'Sync completed.');
       window.location.reload();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Sync failed');
@@ -26,7 +29,7 @@ export function SyncButton() {
 
   return (
     <div className="actions">
-      <button onClick={runSync} disabled={pending}>{pending ? 'Syncing…' : 'Sync RENPHO now'}</button>
+      <button onClick={runSync} disabled={pending}>{pending ? 'Syncing…' : 'Sync Daily Sources'}</button>
       {status ? <span className="small">{status}</span> : null}
     </div>
   );

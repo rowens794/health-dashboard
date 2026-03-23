@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "sync": "tsx scripts/sync-renpho.ts"
+    "sync": "tsx scripts/sync-daily.ts",
+    "sync:renpho": "tsx scripts/sync-renpho.ts",
+    "sync:myfitnesspal": "tsx scripts/sync-myfitnesspal.ts",
+    "sync:garmin": "tsx scripts/sync-garmin.ts"
   },
   "dependencies": {
     "next": "15.3.0",

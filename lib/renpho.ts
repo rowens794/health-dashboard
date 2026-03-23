@@ -1,7 +1,7 @@
-import { APP_DB_PATH, RENPHO_DB_PATH } from './config';
-import { ensureAppDb, insertSyncRun, upsertMeasurement } from './db';
-import { sqliteReadonlyQuery, sqliteQuery } from './sqlite';
-import type { MeasurementRecord, SyncSummary } from './types';
+import { RENPHO_DB_PATH } from './config';
+import { ensureAppDb, hasExistingMeasurement, insertSyncRun, upsertMeasurement } from './db';
+import { sqliteReadonlyQuery } from './sqlite';
+import type { MeasurementRecord, SourceSyncSummary } from './types';
 
 type RenphoRow = {
   id: number;
@@ -18,7 +18,7 @@ type RenphoRow = {
   bodyage: number | null;
 };
 
-export function syncRenpho(triggerType = 'manual'): SyncSummary {
+export function syncRenpho(triggerType = 'manual'): SourceSyncSummary {
   ensureAppDb();
   const startedAt = new Date().toISOString();
   const raw = sqliteReadonlyQuery(
@@ -48,7 +48,7 @@ export function syncRenpho(triggerType = 'manual'): SyncSummary {
 
   for (const row of rows) {
     const record = normalizeRenphoRow(row);
-    const existedBefore = hasExistingRecord(record.sourceRecordId);
+    const existedBefore = hasExistingMeasurement(record.source, record.sourceRecordId);
     upsertMeasurement(record);
     if (existedBefore) {
       updated += 1;
@@ -70,20 +70,14 @@ export function syncRenpho(triggerType = 'manual'): SyncSummary {
   });
 
   return {
+    source: 'renpho',
+    status: 'ok',
     inserted,
     updated,
     scanned: rows.length,
-    lastMeasuredAt: rows.length ? normalizeTimestamp(rows.at(-1)?.timeStamp ?? null) : null,
+    lastRecordAt: rows.length ? normalizeTimestamp(rows.at(-1)?.timeStamp ?? null) : null,
+    message: `Read from ${RENPHO_DB_PATH} in read-only mode via sqlite3 CLI.`,
   };
-}
-
-function hasExistingRecord(sourceRecordId: string) {
-  const raw = sqliteQuery(
-    APP_DB_PATH,
-    `SELECT COUNT(*) AS count FROM measurements WHERE source = 'renpho' AND source_record_id = '${sourceRecordId.replace(/'/g, "''")}';`,
-  );
-  const parsed = raw ? JSON.parse(raw) : [];
-  return Number(parsed[0]?.count ?? 0) > 0;
 }
 
 export function normalizeRenphoRow(row: RenphoRow): MeasurementRecord {

@@ -1,8 +1,14 @@
+const KG_TO_LB = 2.2046226218;
+
 type Point = {
   measured_at: string;
   weight_kg: number | null;
   body_fat_pct: number | null;
 };
+
+function toLb(valueKg: number) {
+  return valueKg * KG_TO_LB;
+}
 
 export function TrendChart({ points }: { points: Point[] }) {
   const clean = points.filter((point) => point.weight_kg != null);
@@ -37,8 +43,8 @@ export function TrendChart({ points }: { points: Point[] }) {
           const y = height - padding - (((point.weight_kg ?? min) - min) / range) * (height - padding * 2);
           return <circle key={point.measured_at} cx={x} cy={y} r="4" fill="#7dd3fc" />;
         })}
-        <text x={padding} y={18} fill="#9aa6c5" fontSize="12">{max.toFixed(1)} kg</text>
-        <text x={padding} y={height - 8} fill="#9aa6c5" fontSize="12">{min.toFixed(1)} kg</text>
+        <text x={padding} y={18} fill="#9aa6c5" fontSize="12">{toLb(max).toFixed(1)} lb</text>
+        <text x={padding} y={height - 8} fill="#9aa6c5" fontSize="12">{toLb(min).toFixed(1)} lb</text>
       </svg>
       <div className="small">Weight trend across the most recent imported measurements.</div>
     </div>
