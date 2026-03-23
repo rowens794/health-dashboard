@@ -4,6 +4,41 @@ import { APP_DB_PATH } from './config';
 import { sqliteExec, sqliteQuery } from './sqlite';
 import type { DailyStepsRecord, MeasurementRecord, NutritionDailyRecord } from './types';
 
+const TABLE_START_DAY = '2025-06-22';
+const DAY_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_CALORIES = 2500;
+const DEFAULT_PROTEIN_G = 188;
+const DEFAULT_CARBS_G = 250;
+const DEFAULT_FAT_G = 83;
+const DEFAULT_STEPS = 8000;
+
+type RawDashboardDailyRow = {
+  day: string;
+  weight_kg: number | null;
+  calories: number | null;
+  steps: number | null;
+  protein_g: number | null;
+  fat_g: number | null;
+  carbs_g: number | null;
+};
+
+type DashboardDailyRow = {
+  day: string;
+  weight_kg: number | null;
+  weight_kg_is_filled: boolean;
+  calories: number | null;
+  calories_is_filled: boolean;
+  steps: number | null;
+  steps_is_filled: boolean;
+  protein_g: number | null;
+  protein_g_is_filled: boolean;
+  fat_g: number | null;
+  fat_g_is_filled: boolean;
+  carbs_g: number | null;
+  carbs_g_is_filled: boolean;
+  weight_7d_avg_kg: number | null;
+};
+
 function ensureDirExists(filePath: string) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
 }
@@ -231,52 +266,58 @@ export function hasExistingDailySteps(source: string, stepDate: string) {
 
 export function getDashboardData() {
   ensureAppDb();
-  const latestRaw = sqliteQuery(APP_DB_PATH, `
-    SELECT measured_at, weight_kg, body_fat_pct, bmi, water_pct, muscle_pct, bone_kg, protein_pct, bmr_kcal, body_age, source_user_id
-    FROM measurements
-    WHERE source = 'renpho'
-    ORDER BY measured_at_epoch DESC
-    LIMIT 1;
-  `);
-
-  const recentRaw = sqliteQuery(APP_DB_PATH, `
-    SELECT measured_at, weight_kg, body_fat_pct, bmi, water_pct, muscle_pct, bone_kg, protein_pct, bmr_kcal, body_age, source_user_id
-    FROM measurements
-    WHERE source = 'renpho'
-    ORDER BY measured_at_epoch DESC
-    LIMIT 20;
-  `);
-
-  const trendRaw = sqliteQuery(APP_DB_PATH, `
-    SELECT measured_at, weight_kg, body_fat_pct
-    FROM measurements
-    WHERE source = 'renpho'
-    ORDER BY measured_at_epoch ASC
-    LIMIT 60;
-  `);
-
-  const nutritionLatestRaw = sqliteQuery(APP_DB_PATH, `
-    SELECT entry_date, calories, protein_g, carbs_g, fat_g, source_type, confidence, scraped_at
-    FROM nutrition_daily
-    WHERE source = 'myfitnesspal'
-    ORDER BY entry_date_epoch DESC
-    LIMIT 1;
-  `);
-
-  const nutritionRecentRaw = sqliteQuery(APP_DB_PATH, `
-    SELECT entry_date, calories, protein_g, carbs_g, fat_g, source_type, confidence, scraped_at
-    FROM nutrition_daily
-    WHERE source = 'myfitnesspal'
-    ORDER BY entry_date_epoch DESC
-    LIMIT 20;
-  `);
-
-  const latestStepsRaw = sqliteQuery(APP_DB_PATH, `
-    SELECT step_date, steps, source_type
-    FROM daily_steps
-    WHERE source = 'garmin'
-    ORDER BY step_date_epoch DESC
-    LIMIT 1;
+  const dailyRowsRaw = sqliteQuery(APP_DB_PATH, `
+    WITH renpho_days AS (
+      SELECT DISTINCT date(measured_at) AS day
+      FROM measurements
+      WHERE source = 'renpho'
+        AND date(measured_at) IS NOT NULL
+    ),
+    renpho_daily AS (
+      SELECT
+        rd.day,
+        (
+          SELECT m2.weight_kg
+          FROM measurements m2
+          WHERE m2.source = 'renpho'
+            AND date(m2.measured_at) = rd.day
+          ORDER BY m2.measured_at_epoch DESC, m2.source_record_id DESC
+          LIMIT 1
+        ) AS weight_kg
+      FROM renpho_days rd
+    ),
+    nutrition AS (
+      SELECT entry_date AS day, calories, protein_g, fat_g, carbs_g
+      FROM nutrition_daily
+      WHERE source = 'myfitnesspal'
+        AND entry_date IS NOT NULL
+    ),
+    steps AS (
+      SELECT step_date AS day, steps
+      FROM daily_steps
+      WHERE source = 'garmin'
+        AND step_date IS NOT NULL
+    ),
+    all_days AS (
+      SELECT day FROM renpho_daily
+      UNION
+      SELECT day FROM nutrition
+      UNION
+      SELECT day FROM steps
+    )
+    SELECT
+      all_days.day,
+      renpho_daily.weight_kg,
+      nutrition.calories,
+      steps.steps,
+      nutrition.protein_g,
+      nutrition.fat_g,
+      nutrition.carbs_g
+    FROM all_days
+    LEFT JOIN renpho_daily ON renpho_daily.day = all_days.day
+    LEFT JOIN nutrition ON nutrition.day = all_days.day
+    LEFT JOIN steps ON steps.day = all_days.day
+    ORDER BY all_days.day ASC;
   `);
 
   const syncRaw = sqliteQuery(APP_DB_PATH, `
@@ -286,17 +327,18 @@ export function getDashboardData() {
     LIMIT 12;
   `);
 
-  const latestRows = parseRows(latestRaw);
-  const nutritionLatestRows = parseRows(nutritionLatestRaw);
-  const latestStepsRows = parseRows(latestStepsRaw);
+  const rawDailyRows = parseRows<RawDashboardDailyRow>(dailyRowsRaw).map((row) => ({
+    day: row.day,
+    weight_kg: toNullableNumber(row.weight_kg),
+    calories: normalizeNutritionValue(toNullableNumber(row.calories)),
+    steps: toNullableNumber(row.steps),
+    protein_g: normalizeNutritionValue(toNullableNumber(row.protein_g)),
+    fat_g: normalizeNutritionValue(toNullableNumber(row.fat_g)),
+    carbs_g: normalizeNutritionValue(toNullableNumber(row.carbs_g)),
+  }));
 
   return {
-    latest: latestRows[0] ?? null,
-    recent: parseRows(recentRaw),
-    trend: parseRows(trendRaw),
-    nutritionLatest: nutritionLatestRows[0] ?? null,
-    nutritionRecent: parseRows(nutritionRecentRaw),
-    stepsLatest: latestStepsRows[0] ?? null,
+    dailyRows: buildDisplayDailyRows(rawDailyRows),
     syncRuns: parseRows(syncRaw),
   };
 }
@@ -319,6 +361,111 @@ function hasCount(sql: string) {
   return Number(parsed[0]?.count ?? 0) > 0;
 }
 
-function parseRows(raw: string) {
-  return raw ? (JSON.parse(raw) as Array<Record<string, unknown>>) : [];
+function parseRows<T extends Record<string, unknown> = Record<string, unknown>>(raw: string) {
+  return raw ? (JSON.parse(raw) as T[]) : [];
+}
+
+function toNullableNumber(value: number | null | undefined) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function normalizeNutritionValue(value: number | null) {
+  if (value == null) return null;
+  return value > 0 ? value : null;
+}
+
+function buildDisplayDailyRows(rawDailyRows: RawDashboardDailyRow[]): DashboardDailyRow[] {
+  const latestDay = getLatestDisplayDay(rawDailyRows);
+  if (!latestDay) return [];
+
+  const rawByDay = new Map(rawDailyRows.map((row) => [row.day, row]));
+  const startDate = parseDay(TABLE_START_DAY);
+  const endDate = parseDay(latestDay);
+  if (startDate == null || endDate == null || startDate.getTime() > endDate.getTime()) return [];
+
+  const rows: DashboardDailyRow[] = [];
+  for (let cursor = new Date(startDate.getTime()); cursor <= endDate; cursor = new Date(cursor.getTime() + DAY_MS)) {
+    const day = formatDayIso(cursor);
+    const raw = rawByDay.get(day);
+    rows.push({
+      day,
+      weight_kg: raw?.weight_kg ?? null,
+      weight_kg_is_filled: false,
+      calories: raw?.calories ?? DEFAULT_CALORIES,
+      calories_is_filled: raw?.calories == null,
+      steps: raw?.steps ?? DEFAULT_STEPS,
+      steps_is_filled: raw?.steps == null,
+      protein_g: raw?.protein_g ?? DEFAULT_PROTEIN_G,
+      protein_g_is_filled: raw?.protein_g == null,
+      fat_g: raw?.fat_g ?? DEFAULT_FAT_G,
+      fat_g_is_filled: raw?.fat_g == null,
+      carbs_g: raw?.carbs_g ?? DEFAULT_CARBS_G,
+      carbs_g_is_filled: raw?.carbs_g == null,
+      weight_7d_avg_kg: null,
+    });
+  }
+
+  interpolateWeightGaps(rows);
+  applyDisplayedWeightRollingAverage(rows);
+  return rows.reverse();
+}
+
+function getLatestDisplayDay(rows: RawDashboardDailyRow[]) {
+  let latest: string | null = null;
+  for (const row of rows) {
+    if (!parseDay(row.day)) continue;
+    if (row.day < TABLE_START_DAY) continue;
+    if (latest == null || row.day > latest) latest = row.day;
+  }
+  return latest;
+}
+
+function interpolateWeightGaps(rows: DashboardDailyRow[]) {
+  const anchorIndices = rows
+    .map((row, index) => (row.weight_kg == null ? -1 : index))
+    .filter((index) => index >= 0);
+
+  for (let i = 1; i < anchorIndices.length; i += 1) {
+    const leftIndex = anchorIndices[i - 1];
+    const rightIndex = anchorIndices[i];
+    const gapSize = rightIndex - leftIndex;
+    if (gapSize <= 1) continue;
+
+    const leftWeight = rows[leftIndex].weight_kg as number;
+    const rightWeight = rows[rightIndex].weight_kg as number;
+
+    for (let offset = 1; offset < gapSize; offset += 1) {
+      const index = leftIndex + offset;
+      const ratio = offset / gapSize;
+      rows[index].weight_kg = leftWeight + (rightWeight - leftWeight) * ratio;
+      rows[index].weight_kg_is_filled = true;
+    }
+  }
+}
+
+function applyDisplayedWeightRollingAverage(rows: DashboardDailyRow[]) {
+  for (let index = 0; index < rows.length; index += 1) {
+    let sum = 0;
+    let count = 0;
+
+    for (let windowIndex = Math.max(0, index - 6); windowIndex <= index; windowIndex += 1) {
+      const weight = rows[windowIndex].weight_kg;
+      if (weight == null) continue;
+      sum += weight;
+      count += 1;
+    }
+
+    rows[index].weight_7d_avg_kg = count ? sum / count : null;
+  }
+}
+
+function parseDay(day: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  const parsed = new Date(`${day}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed;
+}
+
+function formatDayIso(date: Date) {
+  return date.toISOString().slice(0, 10);
 }
