@@ -1,42 +1,10 @@
 import { getDashboardData } from '@/lib/db';
+import { shouldUseHostedSnapshot } from '@/lib/dashboard-snapshot';
 import { SyncButton } from '@/components/SyncButton';
 import { TrendChart } from '@/components/TrendChart';
-
-export const dynamic = 'force-dynamic';
+import type { DashboardDailyRow, DashboardSyncRunRow } from '@/lib/types';
 
 const KG_TO_LB = 2.2046226218;
-
-type DailyRow = {
-  day: string;
-  weight_kg: number | null;
-  weight_kg_is_filled: boolean;
-  calories: number | null;
-  calories_7d_avg: number | null;
-  calories_is_filled: boolean;
-  steps: number | null;
-  steps_7d_avg: number | null;
-  steps_is_filled: boolean;
-  protein_g: number | null;
-  protein_7d_avg_g: number | null;
-  protein_g_is_filled: boolean;
-  fat_g: number | null;
-  fat_7d_avg_g: number | null;
-  fat_g_is_filled: boolean;
-  carbs_g: number | null;
-  carbs_7d_avg_g: number | null;
-  carbs_g_is_filled: boolean;
-  weight_7d_avg_kg: number | null;
-};
-
-type SyncRunRow = {
-  source: string;
-  finished_at: string;
-  trigger_type: string;
-  scanned_count: number;
-  inserted_count: number;
-  updated_count: number;
-  notes: string | null;
-};
 
 function formatDay(value: string | null | undefined) {
   if (!value) return '—';
@@ -84,8 +52,9 @@ function formatGrams(value: number | null | undefined, isFilled = false) {
 
 export default function HomePage() {
   const data = getDashboardData();
-  const rows = data.dailyRows as DailyRow[];
-  const syncRuns = data.syncRuns as SyncRunRow[];
+  const rows: DashboardDailyRow[] = data.dailyRows;
+  const syncRuns: DashboardSyncRunRow[] = data.syncRuns;
+  const hostedSnapshotMode = shouldUseHostedSnapshot();
 
   return (
     <main>
@@ -94,7 +63,11 @@ export default function HomePage() {
           <h1 className="title">Health Dashboard</h1>
         </div>
         <div className="headerActions">
-          <SyncButton label="Grab Data" pendingLabel="Grabbing…" compact />
+          {hostedSnapshotMode ? (
+            <span className="small">Hosted snapshot mode (read-only)</span>
+          ) : (
+            <SyncButton label="Grab Data" pendingLabel="Grabbing…" compact />
+          )}
         </div>
       </div>
 

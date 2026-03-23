@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "sync": "tsx scripts/sync-daily.ts",
+    "export:snapshot": "tsx scripts/export-dashboard-snapshot.ts",
+    "sync:hosted": "npm run sync hosted && npm run export:snapshot",
     "sync:renpho": "tsx scripts/sync-renpho.ts",
     "sync:myfitnesspal": "tsx scripts/sync-myfitnesspal.ts",
     "sync:garmin": "tsx scripts/sync-garmin.ts"

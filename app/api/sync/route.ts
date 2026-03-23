@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { shouldUseHostedSnapshot } from '@/lib/dashboard-snapshot';
 import { syncAllSources } from '@/lib/sync';
 
 export async function POST(request: NextRequest) {
+  if (shouldUseHostedSnapshot()) {
+    return NextResponse.json(
+      { ok: false, error: 'Hosted snapshot mode is read-only. Run local sync/export and push snapshot data.' },
+      { status: 409 },
+    );
+  }
+
   try {
     const trigger = request.nextUrl.searchParams.get('trigger') ?? 'manual';
     const summary = syncAllSources(trigger);

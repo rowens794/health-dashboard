@@ -17,6 +17,9 @@ export const GARMIN_SYNC_START_DATE = process.env.GARMIN_SYNC_START_DATE || LOCA
 export const GARMIN_SYNC_END_DATE = process.env.GARMIN_SYNC_END_DATE || LOCAL_ENV.GARMIN_SYNC_END_DATE || '';
 export const GARMIN_TOKENSTORE_PATH = process.env.GARMIN_TOKENSTORE_PATH || LOCAL_ENV.GARMIN_TOKENSTORE_PATH || path.join(process.cwd(), 'data', 'garmin-tokenstore');
 export const GARMIN_PYTHON_PATH = process.env.GARMIN_PYTHON_PATH || LOCAL_ENV.GARMIN_PYTHON_PATH || path.join(process.cwd(), '.venv', 'bin', 'python');
+export const DASHBOARD_SNAPSHOT_PATH =
+  process.env.HEALTH_DASHBOARD_SNAPSHOT_PATH || LOCAL_ENV.HEALTH_DASHBOARD_SNAPSHOT_PATH || path.join(process.cwd(), 'data', 'dashboard-snapshot.json');
+export const DASHBOARD_DATA_MODE = process.env.HEALTH_DASHBOARD_DATA_MODE || LOCAL_ENV.HEALTH_DASHBOARD_DATA_MODE || '';
 
 function loadLocalEnv() {
   const envPath = path.join(process.cwd(), '.env.local');

@@ -64,3 +64,45 @@ export type SyncAllSummary = {
   ok: boolean;
   results: SourceSyncSummary[];
 };
+
+export type DashboardDailyRow = {
+  day: string;
+  weight_kg: number | null;
+  weight_kg_is_filled: boolean;
+  calories: number | null;
+  calories_7d_avg: number | null;
+  calories_is_filled: boolean;
+  steps: number | null;
+  steps_7d_avg: number | null;
+  steps_is_filled: boolean;
+  protein_g: number | null;
+  protein_7d_avg_g: number | null;
+  protein_g_is_filled: boolean;
+  fat_g: number | null;
+  fat_7d_avg_g: number | null;
+  fat_g_is_filled: boolean;
+  carbs_g: number | null;
+  carbs_7d_avg_g: number | null;
+  carbs_g_is_filled: boolean;
+  weight_7d_avg_kg: number | null;
+};
+
+export type DashboardSyncRunRow = {
+  source: string;
+  finished_at: string;
+  trigger_type: string;
+  scanned_count: number;
+  inserted_count: number;
+  updated_count: number;
+  notes: string | null;
+};
+
+export type DashboardData = {
+  dailyRows: DashboardDailyRow[];
+  syncRuns: DashboardSyncRunRow[];
+};
+
+export type DashboardSnapshot = {
+  generatedAt: string;
+  data: DashboardData;
+};

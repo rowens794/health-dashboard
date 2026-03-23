@@ -1,8 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { APP_DB_PATH } from './config';
+import { readDashboardDataFromSnapshot, shouldUseHostedSnapshot } from './dashboard-snapshot';
 import { sqliteExec, sqliteQuery } from './sqlite';
-import type { DailyStepsRecord, MeasurementRecord, NutritionDailyRecord } from './types';
+import type { DailyStepsRecord, DashboardData, DashboardDailyRow, DashboardSyncRunRow, MeasurementRecord, NutritionDailyRecord } from './types';
 
 const TABLE_START_DAY = '2025-06-22';
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -11,6 +12,7 @@ const DEFAULT_PROTEIN_G = 110;
 const DEFAULT_CARBS_G = 290;
 const DEFAULT_FAT_G = 100;
 const DEFAULT_STEPS = 8000;
+const MAX_SYNC_NOTES_LENGTH = 240;
 
 type RawDashboardDailyRow = {
   day: string;
@@ -20,28 +22,6 @@ type RawDashboardDailyRow = {
   protein_g: number | null;
   fat_g: number | null;
   carbs_g: number | null;
-};
-
-type DashboardDailyRow = {
-  day: string;
-  weight_kg: number | null;
-  weight_kg_is_filled: boolean;
-  calories: number | null;
-  calories_7d_avg: number | null;
-  calories_is_filled: boolean;
-  steps: number | null;
-  steps_7d_avg: number | null;
-  steps_is_filled: boolean;
-  protein_g: number | null;
-  protein_7d_avg_g: number | null;
-  protein_g_is_filled: boolean;
-  fat_g: number | null;
-  fat_7d_avg_g: number | null;
-  fat_g_is_filled: boolean;
-  carbs_g: number | null;
-  carbs_7d_avg_g: number | null;
-  carbs_g_is_filled: boolean;
-  weight_7d_avg_kg: number | null;
 };
 
 function ensureDirExists(filePath: string) {
@@ -269,7 +249,16 @@ export function hasExistingDailySteps(source: string, stepDate: string) {
   `);
 }
 
-export function getDashboardData() {
+export function getDashboardData(): DashboardData {
+  if (shouldUseHostedSnapshot()) {
+    const snapshotData = readDashboardDataFromSnapshot();
+    if (snapshotData) return snapshotData;
+  }
+
+  return getDashboardDataFromSqlite();
+}
+
+export function getDashboardDataFromSqlite(): DashboardData {
   try {
     ensureAppDb();
     const dailyRowsRaw = sqliteQuery(APP_DB_PATH, `
@@ -326,26 +315,30 @@ export function getDashboardData() {
     ORDER BY all_days.day ASC;
   `);
 
-  const syncRaw = sqliteQuery(APP_DB_PATH, `
-    SELECT source, trigger_type, inserted_count, updated_count, scanned_count, finished_at, notes
-    FROM sync_runs
-    ORDER BY id DESC
-    LIMIT 12;
-  `);
+    const syncRaw = sqliteQuery(APP_DB_PATH, `
+      SELECT source, trigger_type, inserted_count, updated_count, scanned_count, finished_at, notes
+      FROM sync_runs
+      ORDER BY id DESC
+      LIMIT 12;
+    `);
 
-  const rawDailyRows = parseRows<RawDashboardDailyRow>(dailyRowsRaw).map((row) => ({
-    day: row.day,
-    weight_kg: toNullableNumber(row.weight_kg),
-    calories: normalizeNutritionValue(toNullableNumber(row.calories)),
-    steps: toNullableNumber(row.steps),
-    protein_g: normalizeNutritionValue(toNullableNumber(row.protein_g)),
-    fat_g: normalizeNutritionValue(toNullableNumber(row.fat_g)),
-    carbs_g: normalizeNutritionValue(toNullableNumber(row.carbs_g)),
-  }));
+    const rawDailyRows = parseRows<RawDashboardDailyRow>(dailyRowsRaw).map((row) => ({
+      day: row.day,
+      weight_kg: toNullableNumber(row.weight_kg),
+      calories: normalizeNutritionValue(toNullableNumber(row.calories)),
+      steps: toNullableNumber(row.steps),
+      protein_g: normalizeNutritionValue(toNullableNumber(row.protein_g)),
+      fat_g: normalizeNutritionValue(toNullableNumber(row.fat_g)),
+      carbs_g: normalizeNutritionValue(toNullableNumber(row.carbs_g)),
+    }));
+    const syncRuns = parseRows<DashboardSyncRunRow>(syncRaw).map((run) => ({
+      ...run,
+      notes: truncateSyncNotes(run.notes),
+    }));
 
     return {
       dailyRows: buildDisplayDailyRows(rawDailyRows),
-      syncRuns: parseRows(syncRaw),
+      syncRuns,
     };
   } catch {
     return {
@@ -384,6 +377,13 @@ function toNullableNumber(value: number | null | undefined) {
 function normalizeNutritionValue(value: number | null) {
   if (value == null) return null;
   return value > 0 ? value : null;
+}
+
+function truncateSyncNotes(value: string | null) {
+  if (!value) return value;
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  if (normalized.length <= MAX_SYNC_NOTES_LENGTH) return normalized;
+  return `${normalized.slice(0, MAX_SYNC_NOTES_LENGTH)}...`;
 }
 
 function buildDisplayDailyRows(rawDailyRows: RawDashboardDailyRow[]): DashboardDailyRow[] {

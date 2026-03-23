@@ -12,6 +12,8 @@ import {
 import { ensureAppDb, hasExistingDailySteps, insertSyncRun, upsertDailySteps } from './db';
 import type { DailyStepsRecord, SourceSyncSummary } from './types';
 
+const MAX_SYNC_NOTE_LENGTH = 700;
+
 type GarminFetchPayload = {
   ok: boolean;
   error?: string;
@@ -127,6 +129,7 @@ function ensurePythonEnvironment() {
 
 function blockedSummary(triggerType: string, startedAt: string, message: string): SourceSyncSummary {
   const finishedAt = new Date().toISOString();
+  const normalizedMessage = normalizeSyncMessage(message);
   insertSyncRun({
     source: 'garmin',
     triggerType,
@@ -135,7 +138,7 @@ function blockedSummary(triggerType: string, startedAt: string, message: string)
     scannedCount: 0,
     startedAt,
     finishedAt,
-    notes: message,
+    notes: normalizedMessage,
   });
 
   return {
@@ -145,7 +148,7 @@ function blockedSummary(triggerType: string, startedAt: string, message: string)
     updated: 0,
     scanned: 0,
     lastRecordAt: null,
-    message,
+    message: normalizedMessage,
   };
 }
 
@@ -180,4 +183,10 @@ function nullableInteger(value: number | null | undefined) {
   if (value == null) return null;
   const numeric = Number(value);
   return Number.isFinite(numeric) ? Math.round(numeric) : null;
+}
+
+function normalizeSyncMessage(message: string) {
+  const singleLine = message.replace(/\s+/g, ' ').trim();
+  if (singleLine.length <= MAX_SYNC_NOTE_LENGTH) return singleLine;
+  return `${singleLine.slice(0, MAX_SYNC_NOTE_LENGTH)}... [truncated]`;
 }

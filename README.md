@@ -2,6 +2,8 @@
 
 Local-first health dashboard that imports RENPHO body metrics and MyFitnessPal daily nutrition into a local SQLite app DB, then serves a Next.js UI.
 
+Hosted deploys (Vercel) read from a repo-stored snapshot at `data/dashboard-snapshot.json`.
+
 ## Stack
 
 - Next.js 15 + TypeScript
@@ -61,6 +63,8 @@ PORT=3001 npm run start
 
 - `npm run sync` (all sources: RENPHO + MyFitnessPal + Garmin attempt)
 - `npm run sync scheduled` (same, but trigger label is `scheduled`)
+- `npm run export:snapshot` (exports current SQLite dashboard view to `data/dashboard-snapshot.json`)
+- `npm run sync:hosted` (runs sync with `hosted` trigger + exports snapshot)
 - `npm run sync:renpho` (RENPHO only)
 - `npm run sync:myfitnesspal` (MyFitnessPal only)
 - `npm run sync:garmin` (Garmin only)
@@ -72,6 +76,21 @@ curl -X POST 'http://localhost:3000/api/sync?trigger=scheduled'
 ```
 
 `POST /api/sync` now runs the same multi-source sync pipeline and returns per-source results.
+In hosted snapshot mode (Vercel), `POST /api/sync` is intentionally read-only and returns `409`.
+
+## Hosted snapshot publish flow
+
+Run this when you want fresh data on Vercel:
+
+```bash
+cd /Users/ryan-desktop/.openclaw/workspace/health-dashboard
+npm run sync:hosted
+git add data/dashboard-snapshot.json
+git commit -m "Refresh hosted dashboard snapshot"
+git push origin master
+```
+
+Vercel builds from git and reads the committed snapshot in hosted mode.
 
 ## Environment variables
 
@@ -97,6 +116,12 @@ curl -X POST 'http://localhost:3000/api/sync?trigger=scheduled'
   - default: `.venv/bin/python`
 - `HEALTH_DASHBOARD_DB_PATH`
   - override local app DB location
+- `HEALTH_DASHBOARD_SNAPSHOT_PATH`
+  - override snapshot JSON path used for export/read
+  - default: `data/dashboard-snapshot.json`
+- `HEALTH_DASHBOARD_DATA_MODE`
+  - force data source mode (`snapshot`/`hosted` or `sqlite`/`local`)
+  - default: auto (`snapshot` on Vercel, `sqlite` elsewhere)
 
 ## Sync scheduling and launchd
 
@@ -152,4 +177,5 @@ If Garmin sync fails, the failure is logged in `sync_runs` and shown in the dash
 ## Notes
 
 - The local SQLite DB files under `data/*.sqlite*` are git-ignored.
+- `data/dashboard-snapshot.json` is committed and used by hosted deploys.
 - RENPHO source reads are performed in sqlite read-only mode.
