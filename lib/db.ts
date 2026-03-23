@@ -27,14 +27,19 @@ type DashboardDailyRow = {
   weight_kg: number | null;
   weight_kg_is_filled: boolean;
   calories: number | null;
+  calories_7d_avg: number | null;
   calories_is_filled: boolean;
   steps: number | null;
+  steps_7d_avg: number | null;
   steps_is_filled: boolean;
   protein_g: number | null;
+  protein_7d_avg_g: number | null;
   protein_g_is_filled: boolean;
   fat_g: number | null;
+  fat_7d_avg_g: number | null;
   fat_g_is_filled: boolean;
   carbs_g: number | null;
+  carbs_7d_avg_g: number | null;
   carbs_g_is_filled: boolean;
   weight_7d_avg_kg: number | null;
 };
@@ -392,21 +397,26 @@ function buildDisplayDailyRows(rawDailyRows: RawDashboardDailyRow[]): DashboardD
       weight_kg: raw?.weight_kg ?? null,
       weight_kg_is_filled: false,
       calories: raw?.calories ?? DEFAULT_CALORIES,
+      calories_7d_avg: null,
       calories_is_filled: raw?.calories == null,
       steps: raw?.steps ?? DEFAULT_STEPS,
+      steps_7d_avg: null,
       steps_is_filled: raw?.steps == null,
       protein_g: raw?.protein_g ?? DEFAULT_PROTEIN_G,
+      protein_7d_avg_g: null,
       protein_g_is_filled: raw?.protein_g == null,
       fat_g: raw?.fat_g ?? DEFAULT_FAT_G,
+      fat_7d_avg_g: null,
       fat_g_is_filled: raw?.fat_g == null,
       carbs_g: raw?.carbs_g ?? DEFAULT_CARBS_G,
+      carbs_7d_avg_g: null,
       carbs_g_is_filled: raw?.carbs_g == null,
       weight_7d_avg_kg: null,
     });
   }
 
   interpolateWeightGaps(rows);
-  applyDisplayedWeightRollingAverage(rows);
+  applyDisplayedRollingAverages(rows);
   return rows.reverse();
 }
 
@@ -443,19 +453,55 @@ function interpolateWeightGaps(rows: DashboardDailyRow[]) {
   }
 }
 
-function applyDisplayedWeightRollingAverage(rows: DashboardDailyRow[]) {
+function applyDisplayedRollingAverages(rows: DashboardDailyRow[]) {
   for (let index = 0; index < rows.length; index += 1) {
-    let sum = 0;
-    let count = 0;
+    let sumWeight = 0;
+    let countWeight = 0;
+    let sumCalories = 0;
+    let countCalories = 0;
+    let sumSteps = 0;
+    let countSteps = 0;
+    let sumProtein = 0;
+    let countProtein = 0;
+    let sumFat = 0;
+    let countFat = 0;
+    let sumCarbs = 0;
+    let countCarbs = 0;
 
     for (let windowIndex = Math.max(0, index - 6); windowIndex <= index; windowIndex += 1) {
-      const weight = rows[windowIndex].weight_kg;
-      if (weight == null) continue;
-      sum += weight;
-      count += 1;
+      const windowRow = rows[windowIndex];
+      if (windowRow.weight_kg != null) {
+        sumWeight += windowRow.weight_kg;
+        countWeight += 1;
+      }
+      if (windowRow.calories != null) {
+        sumCalories += windowRow.calories;
+        countCalories += 1;
+      }
+      if (windowRow.steps != null) {
+        sumSteps += windowRow.steps;
+        countSteps += 1;
+      }
+      if (windowRow.protein_g != null) {
+        sumProtein += windowRow.protein_g;
+        countProtein += 1;
+      }
+      if (windowRow.fat_g != null) {
+        sumFat += windowRow.fat_g;
+        countFat += 1;
+      }
+      if (windowRow.carbs_g != null) {
+        sumCarbs += windowRow.carbs_g;
+        countCarbs += 1;
+      }
     }
 
-    rows[index].weight_7d_avg_kg = count ? sum / count : null;
+    rows[index].weight_7d_avg_kg = countWeight ? sumWeight / countWeight : null;
+    rows[index].calories_7d_avg = countCalories ? sumCalories / countCalories : null;
+    rows[index].steps_7d_avg = countSteps ? sumSteps / countSteps : null;
+    rows[index].protein_7d_avg_g = countProtein ? sumProtein / countProtein : null;
+    rows[index].fat_7d_avg_g = countFat ? sumFat / countFat : null;
+    rows[index].carbs_7d_avg_g = countCarbs ? sumCarbs / countCarbs : null;
   }
 }
 

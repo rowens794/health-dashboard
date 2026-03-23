@@ -1,5 +1,6 @@
 import { getDashboardData } from '@/lib/db';
 import { SyncButton } from '@/components/SyncButton';
+import { TrendChart } from '@/components/TrendChart';
 
 const KG_TO_LB = 2.2046226218;
 
@@ -8,14 +9,19 @@ type DailyRow = {
   weight_kg: number | null;
   weight_kg_is_filled: boolean;
   calories: number | null;
+  calories_7d_avg: number | null;
   calories_is_filled: boolean;
   steps: number | null;
+  steps_7d_avg: number | null;
   steps_is_filled: boolean;
   protein_g: number | null;
+  protein_7d_avg_g: number | null;
   protein_g_is_filled: boolean;
   fat_g: number | null;
+  fat_7d_avg_g: number | null;
   fat_g_is_filled: boolean;
   carbs_g: number | null;
+  carbs_7d_avg_g: number | null;
   carbs_g_is_filled: boolean;
   weight_7d_avg_kg: number | null;
 };
@@ -84,14 +90,17 @@ export default function HomePage() {
       <div className="header">
         <div>
           <h1 className="title">Health Dashboard</h1>
-          <div className="subtitle">
-            Daily unified table from RENPHO measurements, MyFitnessPal nutrition totals, and Garmin steps.
-          </div>
         </div>
-        <div className="badge">Local-only sync</div>
+        <div className="headerActions">
+          <SyncButton label="Grab Data" pendingLabel="Grabbing…" compact />
+        </div>
       </div>
 
       <section className="card">
+        <TrendChart rows={rows} />
+      </section>
+
+      <section className="card tableCard">
         <div className="panelHeader">
           <div>
             <h2 style={{ margin: 0 }}>Daily Overview</h2>
@@ -140,7 +149,6 @@ export default function HomePage() {
             <div className="small">Secondary operational details for imports.</div>
           </div>
         </div>
-        <SyncButton />
         {syncRuns.length ? (
           <div className="tableWrap" style={{ marginTop: 12 }}>
             <table className="table syncTable">
