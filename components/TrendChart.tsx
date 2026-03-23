@@ -127,7 +127,7 @@ function getMonthTicks(rows: TrendRow[]) {
     const prev = filtered[filtered.length - 1];
     if (prev && tick.tickX - prev.tickX < minSpacing) {
       if (prev.anchor === 'start') {
-        filtered[filtered.length - 1] = { ...prev, anchor: 'middle', x: prev.tickX };
+        filtered[filtered.length - 1] = { ...tick, anchor: 'middle', x: tick.tickX };
       }
       continue;
     }
