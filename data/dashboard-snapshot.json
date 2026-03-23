@@ -1,26 +1,26 @@
 {
-  "generatedAt": "2026-03-23T21:55:20.546Z",
+  "generatedAt": "2026-03-23T22:36:43.478Z",
   "data": {
     "dailyRows": [
       {
         "day": "2026-03-23",
         "weight_kg": 79.2,
         "weight_kg_is_filled": false,
-        "calories": 2500,
-        "calories_7d_avg": 2249.285714285714,
-        "calories_is_filled": true,
-        "steps": 4943,
-        "steps_7d_avg": 11023,
+        "calories": null,
+        "calories_7d_avg": 2207.5,
+        "calories_is_filled": false,
+        "steps": 10591,
+        "steps_7d_avg": 11829.857142857143,
         "steps_is_filled": false,
-        "protein_g": 110,
-        "protein_7d_avg_g": 119.57142857142857,
-        "protein_g_is_filled": true,
-        "fat_g": 100,
-        "fat_7d_avg_g": 87.42857142857143,
-        "fat_g_is_filled": true,
-        "carbs_g": 290,
-        "carbs_7d_avg_g": 228.14285714285714,
-        "carbs_g_is_filled": true,
+        "protein_g": null,
+        "protein_7d_avg_g": 121.16666666666667,
+        "protein_g_is_filled": false,
+        "fat_g": null,
+        "fat_7d_avg_g": 85.33333333333333,
+        "fat_g_is_filled": false,
+        "carbs_g": null,
+        "carbs_7d_avg_g": 217.83333333333334,
+        "carbs_g_is_filled": false,
         "weight_7d_avg_kg": 78.88571428571429
       },
       {
@@ -5781,6 +5781,33 @@
     "syncRuns": [
       {
         "source": "garmin",
+        "trigger_type": "cli",
+        "inserted_count": 0,
+        "updated_count": 296,
+        "scanned_count": 296,
+        "finished_at": "2026-03-23T22:36:06.641Z",
+        "notes": "Imported Garmin Connect web steps for 2025-06-01 to 2026-03-23 via Python client."
+      },
+      {
+        "source": "myfitnesspal",
+        "trigger_type": "cli",
+        "inserted_count": 0,
+        "updated_count": 292,
+        "scanned_count": 292,
+        "finished_at": "2026-03-23T22:35:28.543Z",
+        "notes": "Imported from /Users/ryan-desktop/.openclaw/workspace/health-dashboard/data/myfitnesspal-diary-rowens794-2025-06-01-to-2026-03-19.csv."
+      },
+      {
+        "source": "renpho",
+        "trigger_type": "cli",
+        "inserted_count": 0,
+        "updated_count": 658,
+        "scanned_count": 658,
+        "finished_at": "2026-03-23T22:35:25.964Z",
+        "notes": "Read from /Users/ryan-desktop/Library/Containers/60D3E105-BB1C-4728-8C12-6C8358ED5D76/Data/Documents/renphoHealth.sqlite in read-only mode via sqlite3 CLI."
+      },
+      {
+        "source": "garmin",
         "trigger_type": "hosted",
         "inserted_count": 0,
         "updated_count": 0,
@@ -5859,33 +5886,6 @@
         "scanned_count": 657,
         "finished_at": "2026-03-23T13:36:38.155Z",
         "notes": "Read from /Users/ryan-desktop/Library/Containers/60D3E105-BB1C-4728-8C12-6C8358ED5D76/Data/Documents/renphoHealth.sqlite in read-only mode via sqlite3 CLI."
-      },
-      {
-        "source": "garmin",
-        "trigger_type": "cli",
-        "inserted_count": 296,
-        "updated_count": 0,
-        "scanned_count": 296,
-        "finished_at": "2026-03-23T13:36:17.692Z",
-        "notes": "Imported Garmin Connect web steps for 2025-06-01 to 2026-03-23 via Python client."
-      },
-      {
-        "source": "garmin",
-        "trigger_type": "cli",
-        "inserted_count": 0,
-        "updated_count": 0,
-        "scanned_count": 0,
-        "finished_at": "2026-03-23T13:34:21.337Z",
-        "notes": "Command failed: /Users/ryan-desktop/.openclaw/workspace/health-dashboard/.venv/bin/python /Users/ryan-desktop/.openclaw/workspace/health-dashboard/scripts/garmin_fetch_steps.py Traceback (most recent call last): File \"/Users/ryan-desktop/.o..."
-      },
-      {
-        "source": "garmin",
-        "trigger_type": "cli",
-        "inserted_count": 0,
-        "updated_count": 0,
-        "scanned_count": 0,
-        "finished_at": "2026-03-23T13:33:53.424Z",
-        "notes": "Command failed: /Users/ryan-desktop/.openclaw/workspace/health-dashboard/.venv/bin/python /Users/ryan-desktop/.openclaw/workspace/health-dashboard/scripts/garmin_fetch_steps.py Traceback (most recent call last): File \"/Users/ryan-desktop/.o..."
       }
     ]
   }

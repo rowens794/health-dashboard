@@ -37,7 +37,22 @@ button.secondary { background: var(--panel-soft); color: var(--text); }
 .small { font-size: 0.88rem; color: var(--muted); }
 .badge { display: inline-flex; padding: 6px 10px; border-radius: 999px; background: rgba(116, 192, 252, 0.16); color: var(--good); font-size: 0.85rem; }
 .chartWrap { width: 100%; overflow-x: auto; }
-.chartSvg { width: 100%; min-height: 320px; }
+.chartFrame { position: relative; min-width: 1100px; }
+.chartSvg { width: 100%; min-height: 320px; display: block; }
+.chartTooltip {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 8px));
+  pointer-events: none;
+  background: rgba(8, 17, 31, 0.96);
+  color: var(--text);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.28);
+  z-index: 2;
+}
 .panelHeader { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 12px; }
 .trendHeader { margin-bottom: 8px; }
 .code { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.87rem; color: var(--muted); }

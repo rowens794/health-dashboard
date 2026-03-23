@@ -80,6 +80,13 @@ function formatAxisValue(value: number) {
   return value.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 
+function formatTooltipValue(mode: Mode, lineLabel: string, value: number) {
+  if (mode === 'weight' || lineLabel.includes('Goal')) return `${value.toFixed(1)} lb`;
+  if (mode === 'calories') return `${Math.round(value).toLocaleString()} kcal`;
+  if (mode === 'steps') return Math.round(value).toLocaleString();
+  return `${Math.round(value)} g`;
+}
+
 function formatMonthLabel(value: string) {
   const parsed = new Date(`${value}T00:00:00Z`);
   if (Number.isNaN(parsed.getTime())) return value;
@@ -411,6 +418,7 @@ function toPath(values: Array<number | null>, min: number, max: number) {
 
 export function TrendChart({ rows }: { rows: TrendRow[] }) {
   const [mode, setMode] = useState<Mode>('weight');
+  const [hovered, setHovered] = useState<null | { x: number; y: number; label: string }>(null);
 
   const sortedRows = useMemo(
     () => [...rows].sort((left, right) => left.day.localeCompare(right.day)),
@@ -464,6 +472,12 @@ export function TrendChart({ rows }: { rows: TrendRow[] }) {
       </div>
 
       <div className="chartWrap">
+        <div className="chartFrame">
+          {hovered ? (
+            <div className="chartTooltip" style={{ left: hovered.x, top: hovered.y }}>
+              {hovered.label}
+            </div>
+          ) : null}
         <svg viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} className="chartSvg" role="img" aria-label={`${config.title} chart`}>
           <line
             x1={PLOT_PADDING.left}
@@ -515,20 +529,22 @@ export function TrendChart({ rows }: { rows: TrendRow[] }) {
                   strokeLinejoin="round"
                 />
                 {line.values.map((value, index) => {
-                  if (value == null) return null;
+                  if (value == null || line.isGoal) return null;
                   const x = xPosition(index, line.values.length);
                   const y = yPosition(value, min, max);
+                  const tooltip = `${line.label} • ${formatTooltipDay(sortedRows[index]?.day ?? '')} • ${formatTooltipValue(mode, line.label, value)}`;
                   return (
                     <circle
                       key={`${line.label}-${sortedRows[index]?.day ?? index}`}
                       cx={x}
                       cy={y}
-                      r={line.isGoal ? 0 : line.dashed ? 3 : 5}
+                      r={8}
                       fill="transparent"
                       stroke="transparent"
-                    >
-                      <title>{`${line.label} • ${formatTooltipDay(sortedRows[index]?.day ?? '')} • ${formatAxisValue(value)}`}</title>
-                    </circle>
+                      onMouseEnter={() => setHovered({ x, y: Math.max(16, y - 14), label: tooltip })}
+                      onMouseMove={() => setHovered({ x, y: Math.max(16, y - 14), label: tooltip })}
+                      onMouseLeave={() => setHovered(null)}
+                    />
                   );
                 })}
               </g>
@@ -549,6 +565,7 @@ export function TrendChart({ rows }: { rows: TrendRow[] }) {
             </g>
           ))}
         </svg>
+        </div>
       </div>
 
       <div className="chartLegend">
