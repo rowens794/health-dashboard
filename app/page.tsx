@@ -50,24 +50,28 @@ function formatDateTime(value: string | null | undefined) {
   }).format(parsed);
 }
 
-function formatWeightLbs(valueKg: number | null | undefined) {
+function withFilledMarker(text: string, isFilled: boolean) {
+  return isFilled ? `${text}*` : text;
+}
+
+function formatWeightLbs(valueKg: number | null | undefined, isFilled = false) {
   if (valueKg == null) return '—';
-  return `${(valueKg * KG_TO_LB).toFixed(1)} lb`;
+  return withFilledMarker(`${(valueKg * KG_TO_LB).toFixed(1)} lb`, isFilled);
 }
 
-function formatCalories(value: number | null | undefined) {
+function formatCalories(value: number | null | undefined, isFilled = false) {
   if (value == null) return '—';
-  return `${Math.round(value).toLocaleString()} kcal`;
+  return withFilledMarker(`${Math.round(value).toLocaleString()} kcal`, isFilled);
 }
 
-function formatSteps(value: number | null | undefined) {
+function formatSteps(value: number | null | undefined, isFilled = false) {
   if (value == null) return '—';
-  return Math.round(value).toLocaleString();
+  return withFilledMarker(Math.round(value).toLocaleString(), isFilled);
 }
 
-function formatGrams(value: number | null | undefined) {
+function formatGrams(value: number | null | undefined, isFilled = false) {
   if (value == null) return '—';
-  return `${Math.round(value)} g`;
+  return withFilledMarker(`${Math.round(value)} g`, isFilled);
 }
 
 export default function HomePage() {
@@ -91,9 +95,6 @@ export default function HomePage() {
         <div className="panelHeader">
           <div>
             <h2 style={{ margin: 0 }}>Daily Overview</h2>
-            <div className="small">
-              One row per day. Weight uses the latest RENPHO measurement for each day, and rolling average uses that day plus previous 6 days with available weight.
-            </div>
           </div>
         </div>
         {rows.length ? (
@@ -115,12 +116,12 @@ export default function HomePage() {
                 {rows.map((row) => (
                   <tr key={row.day}>
                     <td>{formatDay(row.day)}</td>
-                    <td>{formatWeightLbs(row.weight_kg)}</td>
-                    <td>{formatCalories(row.calories)}</td>
-                    <td>{formatSteps(row.steps)}</td>
-                    <td>{formatGrams(row.protein_g)}</td>
-                    <td>{formatGrams(row.fat_g)}</td>
-                    <td>{formatGrams(row.carbs_g)}</td>
+                    <td>{formatWeightLbs(row.weight_kg, row.weight_kg_is_filled)}</td>
+                    <td>{formatCalories(row.calories, row.calories_is_filled)}</td>
+                    <td>{formatSteps(row.steps, row.steps_is_filled)}</td>
+                    <td>{formatGrams(row.protein_g, row.protein_g_is_filled)}</td>
+                    <td>{formatGrams(row.fat_g, row.fat_g_is_filled)}</td>
+                    <td>{formatGrams(row.carbs_g, row.carbs_g_is_filled)}</td>
                     <td>{formatWeightLbs(row.weight_7d_avg_kg)}</td>
                   </tr>
                 ))}
