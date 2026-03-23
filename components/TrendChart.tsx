@@ -95,19 +95,59 @@ function formatMonthLabel(value: string) {
 }
 
 function getMonthTicks(rows: TrendRow[]) {
-  const ticks: Array<{ index: number; label: string }> = [];
-  let lastMonthKey: string | null = null;
+  const ticks: Array<{ x: number; label: string; anchor: 'start' | 'middle' | 'end' }> = [];
+  if (!rows.length) return ticks;
 
-  rows.forEach((row, index) => {
-    const parsed = new Date(`${row.day}T00:00:00Z`);
-    if (Number.isNaN(parsed.getTime())) return;
-    const monthKey = `${parsed.getUTCFullYear()}-${String(parsed.getUTCMonth() + 1).padStart(2, '0')}`;
-    if (monthKey === lastMonthKey) return;
-    lastMonthKey = monthKey;
-    ticks.push({ index, label: formatMonthLabel(row.day) });
-  });
+  const firstParsed = parseDay(rows[0].day);
+  const lastParsed = parseDay(rows[rows.length - 1].day);
+  if (!firstParsed || !lastParsed) return ticks;
+
+  const startMonth = new Date(Date.UTC(firstParsed.getUTCFullYear(), firstParsed.getUTCMonth(), 1));
+  const endMonth = new Date(Date.UTC(lastParsed.getUTCFullYear(), lastParsed.getUTCMonth(), 1));
+
+  for (
+    let cursor = new Date(startMonth.getTime());
+    cursor <= endMonth;
+    cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1))
+  ) {
+    const tickDay = formatDayIso(cursor);
+    const x = xPositionForDay(tickDay, rows);
+    if (x == null) continue;
+
+    const isFirst = cursor.getTime() === startMonth.getTime();
+    const isLast = cursor.getTime() === endMonth.getTime();
+    ticks.push({
+      x,
+      label: formatMonthLabel(tickDay),
+      anchor: isFirst ? 'start' : isLast ? 'end' : 'middle',
+    });
+  }
 
   return ticks;
+}
+
+function parseDay(day: string) {
+  const parsed = new Date(`${day}T00:00:00Z`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatDayIso(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function xPositionForDay(day: string, rows: TrendRow[]) {
+  if (!rows.length) return null;
+
+  const start = parseDay(rows[0].day);
+  const end = parseDay(rows[rows.length - 1].day);
+  const target = parseDay(day);
+  if (!start || !end || !target) return null;
+
+  const totalDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+  const offsetDays = Math.round((target.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  const width = CHART_WIDTH - PLOT_PADDING.left - PLOT_PADDING.right;
+  const ratio = Math.min(1, Math.max(0, offsetDays / totalDays));
+  return PLOT_PADDING.left + ratio * width;
 }
 
 function modeConfig(mode: Mode, rows: TrendRow[]): ModeConfig {
@@ -430,15 +470,11 @@ export function TrendChart({ rows }: { rows: TrendRow[] }) {
               />
             );
           })}
-          {monthTicks.map((tick, tickIndex) => {
-            const x = xPosition(tick.index, sortedRows.length);
-            const anchor = tickIndex === 0 ? 'start' : tickIndex === monthTicks.length - 1 ? 'end' : 'middle';
-            return (
-              <text key={`${tick.label}-${tick.index}`} x={x} y={CHART_HEIGHT - 4} textAnchor={anchor} className="chartLabel">
-                {tick.label}
-              </text>
-            );
-          })}
+          {monthTicks.map((tick) => (
+            <text key={`${tick.label}-${tick.x}`} x={tick.x} y={CHART_HEIGHT - 4} textAnchor={tick.anchor} className="chartLabel">
+              {tick.label}
+            </text>
+          ))}
         </svg>
       </div>
 
