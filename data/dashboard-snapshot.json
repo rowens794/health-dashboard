@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-03-24T11:22:16.271Z",
+  "generatedAt": "2026-03-24T11:35:04.632Z",
   "data": {
     "dailyRows": [
       {
@@ -7,19 +7,19 @@
         "weight_kg": null,
         "weight_kg_is_filled": false,
         "calories": null,
-        "calories_7d_avg": 2077.1666666666665,
+        "calories_7d_avg": 2012.1666666666667,
         "calories_is_filled": false,
         "steps": 844,
         "steps_7d_avg": 10417.857142857143,
         "steps_is_filled": false,
         "protein_g": null,
-        "protein_7d_avg_g": 122.83333333333333,
+        "protein_7d_avg_g": 118,
         "protein_g_is_filled": false,
         "fat_g": null,
-        "fat_7d_avg_g": 78.33333333333333,
+        "fat_7d_avg_g": 77.83333333333333,
         "fat_g_is_filled": false,
         "carbs_g": null,
-        "carbs_7d_avg_g": 206,
+        "carbs_7d_avg_g": 190.16666666666666,
         "carbs_g_is_filled": false,
         "weight_7d_avg_kg": 78.86666666666666
       },
@@ -28,19 +28,19 @@
         "weight_kg": 79.2,
         "weight_kg_is_filled": false,
         "calories": 1653,
-        "calories_7d_avg": 2128.285714285714,
+        "calories_7d_avg": 2072.5714285714284,
         "calories_is_filled": false,
         "steps": 14188,
         "steps_7d_avg": 12343.714285714286,
         "steps_is_filled": false,
         "protein_g": 145,
-        "protein_7d_avg_g": 124.57142857142857,
+        "protein_7d_avg_g": 120.42857142857143,
         "protein_g_is_filled": false,
         "fat_g": 72,
-        "fat_7d_avg_g": 83.42857142857143,
+        "fat_7d_avg_g": 83,
         "fat_g_is_filled": false,
         "carbs_g": 76,
-        "carbs_7d_avg_g": 197.57142857142858,
+        "carbs_7d_avg_g": 184,
         "carbs_g_is_filled": false,
         "weight_7d_avg_kg": 78.88571428571429
       },
@@ -48,21 +48,21 @@
         "day": "2026-03-22",
         "weight_kg": 79.05,
         "weight_kg_is_filled": false,
-        "calories": 2500,
-        "calories_7d_avg": 2133,
-        "calories_is_filled": true,
+        "calories": 2110,
+        "calories_7d_avg": 2077.285714285714,
+        "calories_is_filled": false,
         "steps": 13715,
         "steps_7d_avg": 12379.714285714286,
         "steps_is_filled": false,
-        "protein_g": 110,
-        "protein_7d_avg_g": 119,
-        "protein_g_is_filled": true,
-        "fat_g": 100,
-        "fat_7d_avg_g": 84.28571428571429,
-        "fat_g_is_filled": true,
-        "carbs_g": 290,
-        "carbs_7d_avg_g": 198.85714285714286,
-        "carbs_g_is_filled": true,
+        "protein_g": 81,
+        "protein_7d_avg_g": 114.85714285714286,
+        "protein_g_is_filled": false,
+        "fat_g": 97,
+        "fat_7d_avg_g": 83.85714285714286,
+        "fat_g_is_filled": false,
+        "carbs_g": 195,
+        "carbs_7d_avg_g": 185.28571428571428,
+        "carbs_g_is_filled": false,
         "weight_7d_avg_kg": 78.91428571428571
       },
       {
@@ -5802,6 +5802,15 @@
     "syncRuns": [
       {
         "source": "myfitnesspal",
+        "trigger_type": "browser-public",
+        "inserted_count": 1,
+        "updated_count": 0,
+        "scanned_count": 1,
+        "finished_at": "2026-03-24T11:35:04.391Z",
+        "notes": "Imported from manual MyFitnessPal diary text for 2026-03-22."
+      },
+      {
+        "source": "myfitnesspal",
         "trigger_type": "manual-text",
         "inserted_count": 1,
         "updated_count": 0,
@@ -5898,15 +5907,6 @@
         "scanned_count": 296,
         "finished_at": "2026-03-24T00:01:07.336Z",
         "notes": "Imported Garmin Connect web steps for 2025-06-01 to 2026-03-23 via Python client."
-      },
-      {
-        "source": "myfitnesspal",
-        "trigger_type": "scheduled",
-        "inserted_count": 0,
-        "updated_count": 292,
-        "scanned_count": 292,
-        "finished_at": "2026-03-24T00:00:24.428Z",
-        "notes": "Imported from /Users/ryan-desktop/.openclaw/workspace/health-dashboard/data/myfitnesspal-diary-rowens794-2025-06-01-to-2026-03-19.csv."
       }
     ]
   }
