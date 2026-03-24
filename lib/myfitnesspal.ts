@@ -2,34 +2,73 @@ import fs from 'node:fs';
 import { MYFITNESSPAL_CSV_PATH } from './config';
 import { parseCsvRecords } from './csv';
 import { ensureAppDb, hasExistingNutritionDaily, insertSyncRun, upsertNutritionDaily } from './db';
+import { syncMyFitnessPalPublicRecentDays } from './myfitnesspal-public';
 import type { NutritionDailyRecord, SourceSyncSummary } from './types';
 
-export function syncMyFitnessPal(triggerType = 'manual'): SourceSyncSummary {
+export async function syncMyFitnessPal(triggerType = 'manual'): Promise<SourceSyncSummary> {
   ensureAppDb();
   const startedAt = new Date().toISOString();
-  const csvPath = MYFITNESSPAL_CSV_PATH;
 
+  let inserted = 0;
+  let updated = 0;
+  let scanned = 0;
+  let lastRecordAt: string | null = null;
+  const notes: string[] = [];
+
+  const csvResult = syncMyFitnessPalCsv();
+  inserted += csvResult.inserted;
+  updated += csvResult.updated;
+  scanned += csvResult.scanned;
+  lastRecordAt = csvResult.lastRecordAt || lastRecordAt;
+  notes.push(csvResult.message);
+
+  try {
+    const publicResult = await syncMyFitnessPalPublicRecentDays();
+    if (publicResult.enabled) {
+      inserted += publicResult.inserted;
+      updated += publicResult.updated;
+      scanned += publicResult.scanned;
+      lastRecordAt = publicResult.lastRecordAt || lastRecordAt;
+      notes.push(publicResult.message);
+    }
+  } catch (error) {
+    notes.push(`Public recent-day fetch failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+  }
+
+  const finishedAt = new Date().toISOString();
+  const message = notes.join(' ');
+  insertSyncRun({
+    source: 'myfitnesspal',
+    triggerType,
+    insertedCount: inserted,
+    updatedCount: updated,
+    scannedCount: scanned,
+    startedAt,
+    finishedAt,
+    notes: message,
+  });
+
+  return {
+    source: 'myfitnesspal',
+    status: inserted > 0 || updated > 0 || scanned > 0 ? 'ok' : 'blocked',
+    inserted,
+    updated,
+    scanned,
+    lastRecordAt,
+    message,
+  };
+}
+
+function syncMyFitnessPalCsv() {
+  const csvPath = MYFITNESSPAL_CSV_PATH;
   if (!csvPath || !fs.existsSync(csvPath)) {
-    const finishedAt = new Date().toISOString();
-    const message = `CSV not found at ${csvPath || '(empty path)'}. Set MYFITNESSPAL_CSV_PATH if needed.`;
-    insertSyncRun({
-      source: 'myfitnesspal',
-      triggerType,
-      insertedCount: 0,
-      updatedCount: 0,
-      scannedCount: 0,
-      startedAt,
-      finishedAt,
-      notes: message,
-    });
     return {
-      source: 'myfitnesspal',
-      status: 'blocked',
       inserted: 0,
       updated: 0,
       scanned: 0,
-      lastRecordAt: null,
-      message,
+      skipped: 0,
+      lastRecordAt: null as string | null,
+      message: `CSV not found at ${csvPath || '(empty path)'}.`,
     };
   }
 
@@ -49,35 +88,18 @@ export function syncMyFitnessPal(triggerType = 'manual'): SourceSyncSummary {
 
     const existedBefore = hasExistingNutritionDaily('myfitnesspal', record.entryDate);
     upsertNutritionDaily(record);
-    if (existedBefore) {
-      updated += 1;
-    } else {
-      inserted += 1;
-    }
+    if (existedBefore) updated += 1;
+    else inserted += 1;
     lastRecordAt = `${record.entryDate}T00:00:00.000Z`;
   }
 
-  const finishedAt = new Date().toISOString();
-  const notes = `Imported from ${csvPath}.${skipped > 0 ? ` Skipped ${skipped} invalid row(s).` : ''}`;
-  insertSyncRun({
-    source: 'myfitnesspal',
-    triggerType,
-    insertedCount: inserted,
-    updatedCount: updated,
-    scannedCount: rows.length,
-    startedAt,
-    finishedAt,
-    notes,
-  });
-
   return {
-    source: 'myfitnesspal',
-    status: 'ok',
     inserted,
     updated,
     scanned: rows.length,
+    skipped,
     lastRecordAt,
-    message: notes,
+    message: `Imported CSV backfill from ${csvPath}.${skipped > 0 ? ` Skipped ${skipped} invalid row(s).` : ''}`,
   };
 }
 

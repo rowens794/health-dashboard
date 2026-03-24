@@ -4,14 +4,14 @@ import { syncMyFitnessPal } from './myfitnesspal';
 import { syncRenpho } from './renpho';
 import type { SourceName, SourceSyncSummary, SyncAllSummary } from './types';
 
-export function syncAllSources(triggerType = 'manual'): SyncAllSummary {
+export async function syncAllSources(triggerType = 'manual'): Promise<SyncAllSummary> {
   ensureAppDb();
   const startedAt = new Date().toISOString();
   const results: SourceSyncSummary[] = [];
 
-  results.push(runSourceSync('renpho', triggerType, () => syncRenpho(triggerType)));
-  results.push(runSourceSync('myfitnesspal', triggerType, () => syncMyFitnessPal(triggerType)));
-  results.push(runSourceSync('garmin', triggerType, () => syncGarmin(triggerType)));
+  results.push(await runSourceSync('renpho', triggerType, () => Promise.resolve(syncRenpho(triggerType))));
+  results.push(await runSourceSync('myfitnesspal', triggerType, () => syncMyFitnessPal(triggerType)));
+  results.push(await runSourceSync('garmin', triggerType, () => Promise.resolve(syncGarmin(triggerType))));
 
   const finishedAt = new Date().toISOString();
 
@@ -24,9 +24,9 @@ export function syncAllSources(triggerType = 'manual'): SyncAllSummary {
   };
 }
 
-function runSourceSync(source: SourceName, triggerType: string, run: () => SourceSyncSummary): SourceSyncSummary {
+async function runSourceSync(source: SourceName, triggerType: string, run: () => Promise<SourceSyncSummary>): Promise<SourceSyncSummary> {
   try {
-    return run();
+    return await run();
   } catch (error) {
     const startedAt = new Date().toISOString();
     const finishedAt = new Date().toISOString();

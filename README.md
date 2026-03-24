@@ -99,6 +99,21 @@ Vercel builds from git and reads the committed snapshot in hosted mode.
 - `MYFITNESSPAL_CSV_PATH`
   - override MyFitnessPal CSV path
   - default: `data/myfitnesspal-diary-rowens794-2025-06-01-to-2026-03-19.csv`
+- `MYFITNESSPAL_PUBLIC_DIARY_USERNAME`
+  - public MyFitnessPal diary username to poll for recent days
+  - default: `rowens794`
+- `MYFITNESSPAL_PUBLIC_RECENT_DAYS`
+  - number of recent public diary days to attempt via browser automation on each sync
+  - default: `7`
+- `MYFITNESSPAL_BROWSER_PROFILE_PATH`
+  - Chrome profile directory used for public diary fetches
+  - default: `data/myfitnesspal-browser-profile`
+- `MYFITNESSPAL_BROWSER_HEADLESS`
+  - run public diary fetch Chrome headless (`true`/`false`)
+  - default: `false`
+- `MYFITNESSPAL_CHROME_PATH`
+  - Chrome executable path for public diary fetches
+  - default: `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`
 - `GARMIN_EMAIL`
   - Garmin Connect login email
 - `GARMIN_PASSWORD`
