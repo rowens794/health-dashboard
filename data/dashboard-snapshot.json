@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-03-24T10:52:14.137Z",
+  "generatedAt": "2026-03-24T11:22:16.271Z",
   "data": {
     "dailyRows": [
       {
@@ -7,19 +7,19 @@
         "weight_kg": null,
         "weight_kg_is_filled": false,
         "calories": null,
-        "calories_7d_avg": 2218.3333333333335,
+        "calories_7d_avg": 2077.1666666666665,
         "calories_is_filled": false,
         "steps": 844,
         "steps_7d_avg": 10417.857142857143,
         "steps_is_filled": false,
         "protein_g": null,
-        "protein_7d_avg_g": 117,
+        "protein_7d_avg_g": 122.83333333333333,
         "protein_g_is_filled": false,
         "fat_g": null,
-        "fat_7d_avg_g": 83,
+        "fat_7d_avg_g": 78.33333333333333,
         "fat_g_is_filled": false,
         "carbs_g": null,
-        "carbs_7d_avg_g": 241.66666666666666,
+        "carbs_7d_avg_g": 206,
         "carbs_g_is_filled": false,
         "weight_7d_avg_kg": 78.86666666666666
       },
@@ -27,21 +27,21 @@
         "day": "2026-03-23",
         "weight_kg": 79.2,
         "weight_kg_is_filled": false,
-        "calories": 2500,
-        "calories_7d_avg": 2249.285714285714,
-        "calories_is_filled": true,
+        "calories": 1653,
+        "calories_7d_avg": 2128.285714285714,
+        "calories_is_filled": false,
         "steps": 14188,
         "steps_7d_avg": 12343.714285714286,
         "steps_is_filled": false,
-        "protein_g": 110,
-        "protein_7d_avg_g": 119.57142857142857,
-        "protein_g_is_filled": true,
-        "fat_g": 100,
-        "fat_7d_avg_g": 87.42857142857143,
-        "fat_g_is_filled": true,
-        "carbs_g": 290,
-        "carbs_7d_avg_g": 228.14285714285714,
-        "carbs_g_is_filled": true,
+        "protein_g": 145,
+        "protein_7d_avg_g": 124.57142857142857,
+        "protein_g_is_filled": false,
+        "fat_g": 72,
+        "fat_7d_avg_g": 83.42857142857143,
+        "fat_g_is_filled": false,
+        "carbs_g": 76,
+        "carbs_7d_avg_g": 197.57142857142858,
+        "carbs_g_is_filled": false,
         "weight_7d_avg_kg": 78.88571428571429
       },
       {
@@ -5801,6 +5801,15 @@
     ],
     "syncRuns": [
       {
+        "source": "myfitnesspal",
+        "trigger_type": "manual-text",
+        "inserted_count": 1,
+        "updated_count": 0,
+        "scanned_count": 1,
+        "finished_at": "2026-03-24T11:22:16.015Z",
+        "notes": "Imported from manual MyFitnessPal diary text for 2026-03-23."
+      },
+      {
         "source": "garmin",
         "trigger_type": "hosted",
         "inserted_count": 0,
@@ -5898,15 +5907,6 @@
         "scanned_count": 292,
         "finished_at": "2026-03-24T00:00:24.428Z",
         "notes": "Imported from /Users/ryan-desktop/.openclaw/workspace/health-dashboard/data/myfitnesspal-diary-rowens794-2025-06-01-to-2026-03-19.csv."
-      },
-      {
-        "source": "renpho",
-        "trigger_type": "scheduled",
-        "inserted_count": 0,
-        "updated_count": 658,
-        "scanned_count": 658,
-        "finished_at": "2026-03-24T00:00:21.892Z",
-        "notes": "Read from /Users/ryan-desktop/Library/Containers/60D3E105-BB1C-4728-8C12-6C8358ED5D76/Data/Documents/renphoHealth.sqlite in read-only mode via sqlite3 CLI."
       }
     ]
   }

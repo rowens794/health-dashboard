@@ -12,6 +12,7 @@
     "sync:hosted": "npm run sync hosted && npm run export:snapshot",
     "sync:renpho": "tsx scripts/sync-renpho.ts",
     "sync:myfitnesspal": "tsx scripts/sync-myfitnesspal.ts",
+    "import:myfitnesspal:text": "tsx scripts/import-myfitnesspal-text.ts",
     "sync:garmin": "tsx scripts/sync-garmin.ts"
   },
   "dependencies": {
