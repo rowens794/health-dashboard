@@ -4,6 +4,8 @@ import { SyncButton } from '@/components/SyncButton';
 import { TrendChart } from '@/components/TrendChart';
 import type { DashboardDailyRow, DashboardSyncRunRow } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 const KG_TO_LB = 2.2046226218;
 
 function formatDay(value: string | null | undefined) {

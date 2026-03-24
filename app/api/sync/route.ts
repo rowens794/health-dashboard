@@ -1,3 +1,4 @@
+import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { shouldUseHostedSnapshot } from '@/lib/dashboard-snapshot';
 import { syncAllSources } from '@/lib/sync';
@@ -13,6 +14,7 @@ export async function POST(request: NextRequest) {
   try {
     const trigger = request.nextUrl.searchParams.get('trigger') ?? 'manual';
     const summary = syncAllSources(trigger);
+    revalidatePath('/');
     return NextResponse.json({ ok: summary.ok, summary }, { status: summary.ok ? 200 : 500 });
   } catch (error) {
     return NextResponse.json(
