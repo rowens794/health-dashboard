@@ -17,6 +17,7 @@ import csv
 import datetime as dt
 import re
 import sys
+import time
 import base64
 import json
 import os
@@ -173,14 +174,41 @@ def write_health_rows(rows: list[dict[str, str]], fieldnames: list[str]) -> None
 
 
 def chrome_page_html(cdp_port: int, url_contains: str = "myfitnesspal.com/food/diary") -> str:
+    page = chrome_diary_page(cdp_port, url_contains)
+    return cdp_evaluate(page["webSocketDebuggerUrl"], "document.documentElement.outerHTML")
+
+
+def chrome_diary_page(cdp_port: int, url_contains: str = "myfitnesspal.com/food/diary") -> dict:
     tabs = json.load(urllib.request.urlopen(f"http://127.0.0.1:{cdp_port}/json/list", timeout=10))
     page = next((tab for tab in tabs if tab.get("type") == "page" and url_contains in tab.get("url", "")), None)
     if not page:
         raise ValueError(f"No Chrome tab found with URL containing {url_contains!r}")
-    return cdp_evaluate(page["webSocketDebuggerUrl"], "document.documentElement.outerHTML")
+    return page
+
+
+def chrome_navigate_and_html(cdp_port: int, username: str, date: str) -> str:
+    page = chrome_diary_page(cdp_port)
+    url = BASE_URL.format(username=username, date=date)
+    cdp_call(page["webSocketDebuggerUrl"], "Page.navigate", {"url": url})
+    deadline = time.time() + 30
+    while time.time() < deadline:
+        time.sleep(0.5)
+        state = cdp_evaluate(page["webSocketDebuggerUrl"], "document.readyState")
+        html = cdp_evaluate(page["webSocketDebuggerUrl"], "document.documentElement.outerHTML")
+        if state == "complete" and "diary-table" in html and "Totals" in html:
+            return html
+    raise TimeoutError(f"Timed out waiting for MyFitnessPal diary page for {date}")
 
 
 def cdp_evaluate(ws_url: str, expression: str) -> str:
+    message = cdp_call(ws_url, "Runtime.evaluate", {"expression": expression, "returnByValue": True})
+    result = message.get("result", {}).get("result", {})
+    if "exceptionDetails" in message.get("result", {}):
+        raise RuntimeError(json.dumps(message["result"]["exceptionDetails"]))
+    return result.get("value", "")
+
+
+def cdp_call(ws_url: str, method: str, params: dict | None = None) -> dict:
     parsed = urllib.parse.urlparse(ws_url)
     sock = socket.create_connection((parsed.hostname, parsed.port), timeout=10)
     key = base64.b64encode(os.urandom(16)).decode()
@@ -198,14 +226,11 @@ def cdp_evaluate(ws_url: str, expression: str) -> str:
         raise ConnectionError("Chrome DevTools websocket handshake failed")
 
     try:
-        send_ws_json(sock, {"id": 1, "method": "Runtime.evaluate", "params": {"expression": expression, "returnByValue": True}})
+        send_ws_json(sock, {"id": 1, "method": method, "params": params or {}})
         while True:
             message = recv_ws_json(sock)
             if message.get("id") == 1:
-                result = message.get("result", {}).get("result", {})
-                if "exceptionDetails" in message.get("result", {}):
-                    raise RuntimeError(json.dumps(message["result"]["exceptionDetails"]))
-                return result.get("value", "")
+                return message
     finally:
         sock.close()
 
@@ -288,6 +313,7 @@ def main() -> int:
     parser.add_argument("--date", default=dt.date.today().isoformat())
     parser.add_argument("--html-file", type=Path, help="Parse saved diary HTML instead of fetching")
     parser.add_argument("--chrome-cdp-port", type=int, help="Read the diary page from an already-open Chrome DevTools port")
+    parser.add_argument("--chrome-navigate", action="store_true", help="Navigate the Chrome diary tab to --date before reading it")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
@@ -295,6 +321,8 @@ def main() -> int:
     try:
         if args.html_file:
             html = args.html_file.read_text(errors="replace")
+        elif args.chrome_cdp_port and args.chrome_navigate:
+            html = chrome_navigate_and_html(args.chrome_cdp_port, args.username, args.date)
         elif args.chrome_cdp_port:
             html = chrome_page_html(args.chrome_cdp_port)
         else:
