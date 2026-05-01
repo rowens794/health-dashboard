@@ -17,7 +17,13 @@ import csv
 import datetime as dt
 import re
 import sys
+import base64
+import json
+import os
+import socket
+import struct
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from html.parser import HTMLParser
@@ -94,6 +100,22 @@ def fetch_diary(username: str, date: str) -> str:
 
 
 def parse_totals(html: str, date: str) -> MfpTotals:
+    # Current MFP pages include macro percentage spans inside each macro cell.
+    # Prefer the explicit macro-value span so carbs=58 + percent=48 does not parse as 5848.
+    total_match = re.search(
+        r'<tr[^>]*class="[^"]*\btotal\b(?![^"]*\balt\b)[^"]*"[^>]*>.*?<td[^>]*>\s*Totals\s*</td>(.*?)</tr>',
+        html,
+        flags=re.I | re.S,
+    )
+    if total_match:
+        cells = re.findall(r'<td[^>]*>(.*?)</td>', total_match.group(1), flags=re.I | re.S)
+        values: list[int] = []
+        for cell in cells[:4]:
+            macro = re.search(r'<span[^>]*class="[^"]*\bmacro-value\b[^"]*"[^>]*>(.*?)</span>', cell, flags=re.I | re.S)
+            values.append(as_int(macro.group(1) if macro else re.sub(r'<[^>]+>', ' ', cell)))
+        if len(values) >= 4:
+            return MfpTotals(date=date, calories=values[0], carbs_g=values[1], fat_g=values[2], protein_g=values[3])
+
     parser = TableParser()
     parser.feed(html)
 
@@ -150,6 +172,78 @@ def write_health_rows(rows: list[dict[str, str]], fieldnames: list[str]) -> None
         writer.writerows(rows)
 
 
+def chrome_page_html(cdp_port: int, url_contains: str = "myfitnesspal.com/food/diary") -> str:
+    tabs = json.load(urllib.request.urlopen(f"http://127.0.0.1:{cdp_port}/json/list", timeout=10))
+    page = next((tab for tab in tabs if tab.get("type") == "page" and url_contains in tab.get("url", "")), None)
+    if not page:
+        raise ValueError(f"No Chrome tab found with URL containing {url_contains!r}")
+    return cdp_evaluate(page["webSocketDebuggerUrl"], "document.documentElement.outerHTML")
+
+
+def cdp_evaluate(ws_url: str, expression: str) -> str:
+    parsed = urllib.parse.urlparse(ws_url)
+    sock = socket.create_connection((parsed.hostname, parsed.port), timeout=10)
+    key = base64.b64encode(os.urandom(16)).decode()
+    request = (
+        f"GET {parsed.path} HTTP/1.1\r\n"
+        f"Host: {parsed.hostname}:{parsed.port}\r\n"
+        "Upgrade: websocket\r\n"
+        "Connection: Upgrade\r\n"
+        f"Sec-WebSocket-Key: {key}\r\n"
+        "Sec-WebSocket-Version: 13\r\n\r\n"
+    )
+    sock.sendall(request.encode())
+    response = sock.recv(4096)
+    if b"101" not in response.split(b"\r\n", 1)[0]:
+        raise ConnectionError("Chrome DevTools websocket handshake failed")
+
+    try:
+        send_ws_json(sock, {"id": 1, "method": "Runtime.evaluate", "params": {"expression": expression, "returnByValue": True}})
+        while True:
+            message = recv_ws_json(sock)
+            if message.get("id") == 1:
+                result = message.get("result", {}).get("result", {})
+                if "exceptionDetails" in message.get("result", {}):
+                    raise RuntimeError(json.dumps(message["result"]["exceptionDetails"]))
+                return result.get("value", "")
+    finally:
+        sock.close()
+
+
+def send_ws_json(sock: socket.socket, payload: dict) -> None:
+    data = json.dumps(payload).encode()
+    header = bytearray([0x81])
+    size = len(data)
+    if size < 126:
+        header.append(0x80 | size)
+    elif size < 65536:
+        header += bytes([0x80 | 126]) + struct.pack("!H", size)
+    else:
+        header += bytes([0x80 | 127]) + struct.pack("!Q", size)
+    mask = os.urandom(4)
+    masked = bytes(byte ^ mask[i % 4] for i, byte in enumerate(data))
+    sock.sendall(header + mask + masked)
+
+
+def recv_ws_json(sock: socket.socket) -> dict:
+    head = sock.recv(2)
+    if not head:
+        raise EOFError("Chrome DevTools websocket closed")
+    b1, b2 = head
+    size = b2 & 0x7F
+    if size == 126:
+        size = struct.unpack("!H", sock.recv(2))[0]
+    elif size == 127:
+        size = struct.unpack("!Q", sock.recv(8))[0]
+    mask = sock.recv(4) if b2 & 0x80 else None
+    data = b""
+    while len(data) < size:
+        data += sock.recv(size - len(data))
+    if mask:
+        data = bytes(byte ^ mask[i % 4] for i, byte in enumerate(data))
+    return json.loads(data.decode(errors="replace"))
+
+
 def update_health_csv(totals: MfpTotals) -> None:
     rows = read_health_rows()
     fieldnames = ["date", "weight_lbs", "calories", "steps", "protein_g", "carbs_g", "fat_g"]
@@ -193,12 +287,18 @@ def main() -> int:
     parser.add_argument("--username", default=DEFAULT_USERNAME)
     parser.add_argument("--date", default=dt.date.today().isoformat())
     parser.add_argument("--html-file", type=Path, help="Parse saved diary HTML instead of fetching")
+    parser.add_argument("--chrome-cdp-port", type=int, help="Read the diary page from an already-open Chrome DevTools port")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
     source = f"mfp:{args.username}"
     try:
-        html = args.html_file.read_text(errors="replace") if args.html_file else fetch_diary(args.username, args.date)
+        if args.html_file:
+            html = args.html_file.read_text(errors="replace")
+        elif args.chrome_cdp_port:
+            html = chrome_page_html(args.chrome_cdp_port)
+        else:
+            html = fetch_diary(args.username, args.date)
         totals = parse_totals(html, args.date)
         if args.dry_run:
             print(totals)

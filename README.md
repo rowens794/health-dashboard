@@ -73,13 +73,22 @@ It targets public diary URLs like:
 https://www.myfitnesspal.com/food/diary/rowens794?date=2026-05-01
 ```
 
-Current caveat: MyFitnessPal is returning a Cloudflare challenge to unattended fetches from this machine, so direct scheduled fetches currently log `blocked` in `data/sync-log.csv`. The parser works against saved diary HTML via:
+Current caveat: MyFitnessPal is returning a Cloudflare challenge to direct unattended HTTP fetches from this machine, so direct scheduled fetches currently log `blocked` in `data/sync-log.csv`.
+
+The working unattended path is a dedicated local Chrome profile that Ryan logged into once:
+
+```sh
+scripts/open_mfp_chrome.sh 2026-05-01
+scripts/sync_mfp_public_diary.py --date 2026-05-01 --chrome-cdp-port 9223
+```
+
+The parser also works against saved diary HTML via:
 
 ```sh
 scripts/sync_mfp_public_diary.py --date 2026-05-01 --html-file path/to/diary.html
 ```
 
-Likely next options are a browser-authenticated export flow, a local manual/export bridge, or a different source of MyFitnessPal data.
+The Chrome path is good enough to test scheduled syncing. It should be monitored because MyFitnessPal can still expire the session or require a fresh login/challenge.
 
 ## Planned next steps
 
