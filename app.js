@@ -209,6 +209,10 @@ function avg(values) {
   return finite.reduce((sum, value) => sum + value, 0) / finite.length;
 }
 
+function shortDate(date) {
+  return date.slice(5).replace('-', '/');
+}
+
 function renderWeeklyAverages(rows) {
   const el = document.getElementById('weekly-table-wrap');
   const weeks = [];
@@ -216,7 +220,7 @@ function renderWeeklyAverages(rows) {
     const weekRows = rows.slice(start, start + 7);
     weeks.push({
       label: `Week ${weeks.length + 1}`,
-      range: `${weekRows[0].date.slice(5)}–${weekRows.at(-1).date.slice(5)}`,
+      range: `${shortDate(weekRows[0].date)} – ${shortDate(weekRows.at(-1).date)}`,
       weight: avg(weekRows.map((row) => row.weight_lbs)),
       bodyfat: avg(weekRows.map((row) => row.bodyfat_percent)),
       calories: avg(weekRows.map((row) => row.calories)),
