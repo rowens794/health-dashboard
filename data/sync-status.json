@@ -21,12 +21,12 @@
     "dashboard": {
       "label": "Dashboard data",
       "status": "ok",
-      "message": "wrote /Users/ryan-desktop/.openclaw/workspace/health-dashboard/data/dashboard-health.csv with 335 rows; 122 rows imputed"
+      "message": "wrote /Users/ryan-desktop/.openclaw/workspace/health-dashboard/data/dashboard-health.csv with 314 rows; 101 rows imputed"
     }
   },
   "data": {
-    "rows": 335,
-    "date_min": "2025-06-01",
+    "rows": 314,
+    "date_min": "2025-06-22",
     "date_max": "2026-05-01",
     "latest": {
       "date": "2026-05-01",
@@ -39,13 +39,13 @@
       "bodyfat_percent": "17.8"
     },
     "coverage": {
-      "weight_lbs": 223,
-      "bodyfat_percent": 223,
-      "calories": 335,
-      "steps": 334,
-      "protein_g": 335,
-      "carbs_g": 335,
-      "fat_g": 335
+      "weight_lbs": 222,
+      "bodyfat_percent": 222,
+      "calories": 314,
+      "steps": 313,
+      "protein_g": 314,
+      "carbs_g": 314,
+      "fat_g": 314
     }
   }
 }

@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 RAW_CSV = ROOT / "data" / "health.csv"
 DEXA_CSV = ROOT / "data" / "dexa.csv"
 OUT_CSV = ROOT / "data" / "dashboard-health.csv"
+DEFAULT_START_DATE = "2025-06-22"
 
 FIELDS = [
     "date",
@@ -193,10 +194,11 @@ def main() -> int:
     parser.add_argument("--input", type=Path, default=RAW_CSV)
     parser.add_argument("--dexa", type=Path, default=DEXA_CSV)
     parser.add_argument("--output", type=Path, default=OUT_CSV)
+    parser.add_argument("--start-date", default=DEFAULT_START_DATE)
     args = parser.parse_args()
 
     with args.input.open(newline="") as f:
-        raw_rows = list(csv.DictReader(f))
+        raw_rows = [row for row in csv.DictReader(f) if row.get("date", "") >= args.start_date]
     dexa_anchors = load_dexa_anchors(args.dexa)
     rows = build_rows(raw_rows, dexa_anchors)
     with args.output.open("w", newline="") as f:

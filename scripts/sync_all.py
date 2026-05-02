@@ -194,7 +194,7 @@ def git_commit(message: str, push: bool) -> tuple[int, str]:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run all health-dashboard syncs")
     parser.add_argument("--date", default=today())
-    parser.add_argument("--start-date", default="2025-06-01")
+    parser.add_argument("--start-date", default="2025-06-22")
     parser.add_argument("--mfp-port", type=int, default=9223)
     parser.add_argument("--garmin-port", type=int, default=9224)
     parser.add_argument("--no-renpho-open", action="store_true")

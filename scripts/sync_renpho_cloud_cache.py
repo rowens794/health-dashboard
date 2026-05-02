@@ -254,7 +254,7 @@ def log_sync(status: str, message: str) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Sync RENPHO cloud measurements via logged-in app cache")
     parser.add_argument("--cache-db", type=Path, default=DEFAULT_CACHE_DB)
-    parser.add_argument("--start-date", default="2025-06-01")
+    parser.add_argument("--start-date", default="2025-06-22")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--raw-json", type=Path, help="Optional path to write decrypted measurements JSON")
     args = parser.parse_args()
