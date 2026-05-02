@@ -1,7 +1,7 @@
 {
-  "started_at": "2026-05-01T22:04:26-04:00",
-  "finished_at": "2026-05-01T22:04:31-04:00",
-  "overall": "ok",
+  "started_at": "2026-05-02T06:00:09-04:00",
+  "finished_at": "2026-05-02T06:00:16-04:00",
+  "overall": "error",
   "sources": {
     "mfp": {
       "label": "MyFitnessPal",
@@ -10,42 +10,42 @@
     },
     "garmin": {
       "label": "Garmin steps",
-      "status": "ok",
-      "message": "exit 0"
+      "status": "error",
+      "message": "Could not fetch Garmin steps 2026-05-02..2026-05-02: {'error': 'HTTP 401', 'text': ''}"
     },
     "renpho": {
       "label": "RENPHO weight",
       "status": "ok",
-      "message": "imported 223 daily RENPHO weights from 694 measurements"
+      "message": "imported 222 daily RENPHO weights from 694 measurements"
     },
     "dashboard": {
       "label": "Dashboard data",
       "status": "ok",
-      "message": "wrote /Users/ryan-desktop/.openclaw/workspace/health-dashboard/data/dashboard-health.csv with 314 rows; 101 rows imputed"
+      "message": "wrote /Users/ryan-desktop/.openclaw/workspace/health-dashboard/data/dashboard-health.csv with 315 rows; 102 rows imputed; 2 DEXA anchors"
     }
   },
   "data": {
-    "rows": 314,
+    "rows": 315,
     "date_min": "2025-06-22",
-    "date_max": "2026-05-01",
+    "date_max": "2026-05-02",
     "latest": {
-      "date": "2026-05-01",
-      "weight_lbs": "172.0",
-      "calories": "443",
-      "steps": "10773",
-      "protein_g": "28",
-      "carbs_g": "58",
-      "fat_g": "16",
-      "bodyfat_percent": "17.8"
+      "date": "2026-05-02",
+      "weight_lbs": "",
+      "calories": "0",
+      "steps": "",
+      "protein_g": "0",
+      "carbs_g": "0",
+      "fat_g": "0",
+      "bodyfat_percent": ""
     },
     "coverage": {
       "weight_lbs": 222,
       "bodyfat_percent": 222,
-      "calories": 314,
+      "calories": 315,
       "steps": 313,
-      "protein_g": 314,
-      "carbs_g": 314,
-      "fat_g": 314
+      "protein_g": 315,
+      "carbs_g": 315,
+      "fat_g": 315
     }
   }
 }
