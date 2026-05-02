@@ -30,6 +30,7 @@ SOURCES = {
     "mfp": "MyFitnessPal",
     "garmin": "Garmin steps",
     "renpho": "RENPHO weight",
+    "dashboard": "Dashboard data",
 }
 
 
@@ -134,6 +135,11 @@ def sync_renpho(start_date: str, open_app: bool) -> dict[str, str]:
     return {"status": "ok" if code == 0 else "error", "message": out or f"exit {code}"}
 
 
+def build_dashboard_data() -> dict[str, str]:
+    code, out = run([sys.executable, str(SCRIPTS / "build_dashboard_data.py")], timeout=60)
+    return {"status": "ok" if code == 0 else "error", "message": out or f"exit {code}"}
+
+
 def data_summary() -> dict[str, object]:
     if not HEALTH_CSV.exists():
         return {"rows": 0}
@@ -168,7 +174,7 @@ def write_status(results: dict[str, dict[str, str]], started_at: str, finished_a
 
 
 def git_commit(message: str, push: bool) -> tuple[int, str]:
-    run(["git", "add", "data/health.csv", "data/sync-log.csv", "data/sync-status.json"], timeout=30)
+    run(["git", "add", "data/health.csv", "data/dashboard-health.csv", "data/sync-log.csv", "data/sync-status.json"], timeout=30)
     diff_code, _ = run(["git", "diff", "--cached", "--quiet"], timeout=30)
     if diff_code == 0:
         return 0, "no data changes to commit"
@@ -203,6 +209,7 @@ def main() -> int:
         ("mfp", lambda: sync_mfp(args.date, args.mfp_port)),
         ("garmin", lambda: sync_garmin(args.date, args.garmin_port)),
         ("renpho", lambda: sync_renpho(args.start_date, not args.no_renpho_open)),
+        ("dashboard", build_dashboard_data),
     ]:
         try:
             results[key] = fn()

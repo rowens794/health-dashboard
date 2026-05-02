@@ -1,4 +1,4 @@
-const DATA_URL = 'data/health.csv';
+const DATA_URL = 'data/dashboard-health.csv';
 const STATUS_URL = 'data/sync-status.json';
 const TDEE_WINDOW_DAYS = 14;
 
@@ -108,8 +108,8 @@ function drawWeightChart(rows) {
   const weights = chartRows.map((r) => r.weight_lbs).filter(Number.isFinite);
   const avgs = rows.map((_, i) => movingAverage(rows, i)).filter(Number.isFinite);
   const allValues = [...weights, ...avgs];
-  const min = Math.floor(Math.min(...allValues) - 1);
-  const max = Math.ceil(Math.max(...allValues) + 1);
+  const min = 165;
+  const max = 215;
   const chartWidth = width - pad.left - pad.right;
   const chartHeight = height - pad.top - pad.bottom;
 
@@ -122,8 +122,7 @@ function drawWeightChart(rows) {
 
   ctx.strokeStyle = '#2a3546';
   ctx.fillStyle = '#9facbd';
-  for (let tick = 0; tick <= 4; tick += 1) {
-    const value = min + ((max - min) * tick) / 4;
+  for (let value = min; value <= max; value += 5) {
     const ty = y(value);
     ctx.beginPath();
     ctx.moveTo(pad.left, ty);

@@ -20,11 +20,11 @@ Static CSV-backed dashboard for tracking weight, calories/macros, steps, and est
 
 ## Data file
 
-The dashboard reads `data/health.csv`.
+Raw syncs write `data/health.csv`. The dashboard reads `data/dashboard-health.csv`, which is generated from the raw CSV with obvious bad weight rows removed and missing values imputed for presentation.
 
 ```csv
-date,weight_lbs,calories,steps,protein_g,carbs_g,fat_g,bodyfat_percent
-2026-05-01,172.0,443,10773,28,58,16,17.8
+date,weight_lbs,calories,steps,protein_g,carbs_g,fat_g,bodyfat_percent,imputed_fields
+2026-05-01,172.0,443,10773,28,58,16,17.8,
 ```
 
 Keep one row per day. A future sync script can update today's row three times a day as Garmin, Renpho, and MyFitnessPal data arrive.
@@ -100,7 +100,7 @@ The combined runner is:
 scripts/sync_all.py --commit --push
 ```
 
-It runs today's MyFitnessPal diary sync, today's Garmin steps sync, and RENPHO cloud-cache weight sync, then refreshes `data/sync-status.json` for the dashboard. It opens the dedicated Chrome profiles if their DevTools ports are not already running and best-effort opens RENPHO Health so the Mac app can refresh Bluetooth/cloud state. With `--push`, GitHub Pages updates after scheduled sync commits.
+It runs today's MyFitnessPal diary sync, today's Garmin steps sync, RENPHO cloud-cache weight sync, and `scripts/build_dashboard_data.py`, then refreshes `data/sync-status.json` for the dashboard. It opens the dedicated Chrome profiles if their DevTools ports are not already running and best-effort opens RENPHO Health so the Mac app can refresh Bluetooth/cloud state. With `--push`, GitHub Pages updates after scheduled sync commits.
 
 OpenClaw cron job `health-dashboard-sync-3x-daily` runs this at **06:00, 14:00, and 21:00 America/New_York**.
 

@@ -1,6 +1,6 @@
 {
-  "started_at": "2026-05-01T21:50:33-04:00",
-  "finished_at": "2026-05-01T21:50:37-04:00",
+  "started_at": "2026-05-01T22:04:26-04:00",
+  "finished_at": "2026-05-01T22:04:31-04:00",
   "overall": "ok",
   "sources": {
     "mfp": {
@@ -18,10 +18,10 @@
       "status": "ok",
       "message": "imported 223 daily RENPHO weights from 694 measurements"
     },
-    "git": {
-      "label": "git",
+    "dashboard": {
+      "label": "Dashboard data",
       "status": "ok",
-      "message": "committed 409bd8d"
+      "message": "wrote /Users/ryan-desktop/.openclaw/workspace/health-dashboard/data/dashboard-health.csv with 335 rows; 122 rows imputed"
     }
   },
   "data": {
