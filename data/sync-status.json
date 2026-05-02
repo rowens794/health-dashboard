@@ -1,0 +1,46 @@
+{
+  "started_at": "2026-05-01T21:42:22-04:00",
+  "finished_at": "2026-05-01T21:42:29-04:00",
+  "overall": "ok",
+  "sources": {
+    "mfp": {
+      "label": "MyFitnessPal",
+      "status": "ok",
+      "message": "exit 0"
+    },
+    "garmin": {
+      "label": "Garmin steps",
+      "status": "ok",
+      "message": "exit 0"
+    },
+    "renpho": {
+      "label": "RENPHO weight",
+      "status": "ok",
+      "message": "imported 223 daily RENPHO weights from 694 measurements"
+    }
+  },
+  "data": {
+    "rows": 335,
+    "date_min": "2025-06-01",
+    "date_max": "2026-05-01",
+    "latest": {
+      "date": "2026-05-01",
+      "weight_lbs": "172.0",
+      "calories": "443",
+      "steps": "10773",
+      "protein_g": "28",
+      "carbs_g": "58",
+      "fat_g": "16",
+      "bodyfat_percent": "17.8"
+    },
+    "coverage": {
+      "weight_lbs": 223,
+      "bodyfat_percent": 223,
+      "calories": 335,
+      "steps": 334,
+      "protein_g": 335,
+      "carbs_g": 335,
+      "fat_g": 335
+    }
+  }
+}

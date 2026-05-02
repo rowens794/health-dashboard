@@ -367,3 +367,6 @@ sync_at,source,status,message
 2026-05-01T20:20:46-04:00,mfp-backfill:rowens794,ok,"2025-06-02: 0 cal, P0/C0/F0"
 2026-05-01T20:20:50-04:00,mfp-backfill:rowens794,ok,"2025-06-01: 0 cal, P0/C0/F0"
 2026-05-01T20:22:59-04:00,renpho:cloud-cache,ok,imported 223 daily weights from 694 RENPHO measurements
+2026-05-01T21:42:25-04:00,mfp:rowens794,ok,"2026-05-01: 443 cal, P28/C58/F16"
+2026-05-01T21:42:25-04:00,garmin:steps,ok,2026-05-01: 10773 steps
+2026-05-01T21:42:29-04:00,renpho:cloud-cache,ok,imported 223 daily weights from 694 RENPHO measurements

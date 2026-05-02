@@ -9,6 +9,7 @@
   --accent: #72ddf7;
   --accent-2: #f7b267;
   --good: #8bd17c;
+  --warn: #f7b267;
   --shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -65,6 +66,21 @@ p { color: var(--muted); }
 .status-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 
 .panel { padding: 22px; margin-top: 18px; }
+.sync-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.sync-item {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px;
+}
+.sync-item strong, .sync-item span { display: block; }
+.sync-item strong { color: var(--text); margin-bottom: 6px; }
+.sync-item span { color: var(--muted); font-weight: 700; }
+.sync-item small { color: var(--muted); display: block; margin-top: 8px; line-height: 1.35; }
+.sync-item.ok { border-color: color-mix(in srgb, var(--good) 45%, var(--line)); }
+.sync-item.ok span { color: var(--good); }
+.sync-item.warn { border-color: color-mix(in srgb, var(--warn) 55%, var(--line)); }
+.sync-item.warn span { color: var(--warn); }
 .panel-header {
   display: flex;
   align-items: flex-start;
@@ -108,4 +124,5 @@ tbody tr:last-child td { border-bottom: 0; }
   .hero, .panel-header { align-items: stretch; flex-direction: column; }
   .status-card { min-width: 0; }
   .legend { flex-wrap: wrap; }
+  .sync-grid { grid-template-columns: 1fr; }
 }

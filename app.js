@@ -1,4 +1,5 @@
 const DATA_URL = 'data/health.csv';
+const STATUS_URL = 'data/sync-status.json';
 const TDEE_WINDOW_DAYS = 14;
 
 const number = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
@@ -55,6 +56,40 @@ function estimateTdee(rows, index, windowDays = TDEE_WINDOW_DAYS) {
 function daysBetween(a, b) {
   const ms = new Date(`${b}T00:00:00`) - new Date(`${a}T00:00:00`);
   return Math.round(ms / 86400000);
+}
+
+function relativeTime(iso) {
+  if (!iso) return 'never';
+  const elapsed = Date.now() - new Date(iso).getTime();
+  const minutes = Math.round(elapsed / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `${hours}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
+}
+
+function renderSyncStatus(status) {
+  const el = document.getElementById('sync-status');
+  if (!status) {
+    el.innerHTML = '<div class="sync-item warn"><strong>No sync status yet</strong><span>Run scripts/sync_all.py once.</span></div>';
+    return;
+  }
+  const sourceCards = Object.values(status.sources || {}).map((source) => `
+    <div class="sync-item ${source.status === 'ok' ? 'ok' : 'warn'}">
+      <strong>${source.label}</strong>
+      <span>${source.status === 'ok' ? 'OK' : 'Needs attention'}</span>
+      <small>${source.message || ''}</small>
+    </div>
+  `).join('');
+  el.innerHTML = `
+    <div class="sync-item ${status.overall === 'ok' ? 'ok' : 'warn'}">
+      <strong>Last run</strong>
+      <span>${relativeTime(status.finished_at)}</span>
+      <small>${status.finished_at || '—'}</small>
+    </div>
+    ${sourceCards}
+  `;
 }
 
 function drawWeightChart(rows) {
@@ -168,12 +203,18 @@ function renderSummary(rows) {
 }
 
 async function loadDashboard() {
-  const res = await fetch(`${DATA_URL}?v=${Date.now()}`);
-  if (!res.ok) throw new Error(`Could not load ${DATA_URL}`);
-  const rows = parseCsv(await res.text());
+  const cacheBust = Date.now();
+  const [dataRes, statusRes] = await Promise.all([
+    fetch(`${DATA_URL}?v=${cacheBust}`),
+    fetch(`${STATUS_URL}?v=${cacheBust}`).catch(() => null),
+  ]);
+  if (!dataRes.ok) throw new Error(`Could not load ${DATA_URL}`);
+  const rows = parseCsv(await dataRes.text());
   renderSummary(rows);
   drawWeightChart(rows);
   renderTable(rows);
+  if (statusRes?.ok) renderSyncStatus(await statusRes.json());
+  else renderSyncStatus(null);
 }
 
 document.getElementById('reload-button').addEventListener('click', loadDashboard);

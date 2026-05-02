@@ -6,9 +6,11 @@ Static CSV-backed dashboard for tracking weight, calories/macros, steps, and est
 
 - Weight line chart at the top of the page
 - 7-day moving average overlay
+- Sync status panel for the Mac mini job
 - Daily table with:
   - Date
   - Weight
+  - Body fat
   - Calories
   - Steps
   - Protein
@@ -21,8 +23,8 @@ Static CSV-backed dashboard for tracking weight, calories/macros, steps, and est
 The dashboard reads `data/health.csv`.
 
 ```csv
-date,weight_lbs,calories,steps,protein_g,carbs_g,fat_g
-2026-05-01,217.0,2230,9600,183,202,72
+date,weight_lbs,calories,steps,protein_g,carbs_g,fat_g,bodyfat_percent
+2026-05-01,172.0,443,10773,28,58,16,17.8
 ```
 
 Keep one row per day. A future sync script can update today's row three times a day as Garmin, Renpho, and MyFitnessPal data arrive.
@@ -90,10 +92,21 @@ scripts/sync_mfp_public_diary.py --date 2026-05-01 --html-file path/to/diary.htm
 
 The Chrome path is good enough to test scheduled syncing. It should be monitored because MyFitnessPal can still expire the session or require a fresh login/challenge.
 
+## Scheduled sync
+
+The combined runner is:
+
+```sh
+scripts/sync_all.py --commit
+```
+
+It runs today's MyFitnessPal diary sync, today's Garmin steps sync, and RENPHO cloud-cache weight sync, then refreshes `data/sync-status.json` for the dashboard. It opens the dedicated Chrome profiles if their DevTools ports are not already running and best-effort opens RENPHO Health so the Mac app can refresh Bluetooth/cloud state.
+
+OpenClaw cron job `health-dashboard-sync-3x-daily` runs this at **06:00, 14:00, and 21:00 America/New_York**.
+
+If RENPHO fails with an expired/stale cache, open RENPHO Health on the Mac mini once and rerun the sync.
+
 ## Planned next steps
 
-- Decide the reliable MyFitnessPal access path around Cloudflare
-- Add real ingestion scripts for Garmin and Renpho
-- Add a 3x/day scheduled sync once at least one source is stable
-- Add sync status and failure logs to the dashboard
+- Add GitHub remote / private Pages deployment when ready
 - Add goals/targets once the baseline dashboard is stable
