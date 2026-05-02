@@ -97,10 +97,10 @@ The Chrome path is good enough to test scheduled syncing. It should be monitored
 The combined runner is:
 
 ```sh
-scripts/sync_all.py --commit
+scripts/sync_all.py --commit --push
 ```
 
-It runs today's MyFitnessPal diary sync, today's Garmin steps sync, and RENPHO cloud-cache weight sync, then refreshes `data/sync-status.json` for the dashboard. It opens the dedicated Chrome profiles if their DevTools ports are not already running and best-effort opens RENPHO Health so the Mac app can refresh Bluetooth/cloud state.
+It runs today's MyFitnessPal diary sync, today's Garmin steps sync, and RENPHO cloud-cache weight sync, then refreshes `data/sync-status.json` for the dashboard. It opens the dedicated Chrome profiles if their DevTools ports are not already running and best-effort opens RENPHO Health so the Mac app can refresh Bluetooth/cloud state. With `--push`, GitHub Pages updates after scheduled sync commits.
 
 OpenClaw cron job `health-dashboard-sync-3x-daily` runs this at **06:00, 14:00, and 21:00 America/New_York**.
 
