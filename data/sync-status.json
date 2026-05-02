@@ -17,6 +17,11 @@
       "label": "RENPHO weight",
       "status": "ok",
       "message": "imported 223 daily RENPHO weights from 694 measurements"
+    },
+    "git": {
+      "label": "git",
+      "status": "ok",
+      "message": "committed 409bd8d"
     }
   },
   "data": {

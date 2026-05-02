@@ -23,7 +23,9 @@ import os
 import plistlib
 import re
 import sqlite3
+import shutil
 import subprocess
+import tempfile
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -66,26 +68,40 @@ def decode_jwt_payload(token: str) -> dict[str, Any]:
     return json.loads(base64.urlsafe_b64decode(payload))
 
 
+def copy_sqlite_for_reading(db_path: Path, tmpdir: Path) -> Path:
+    """Copy SQLite DB plus WAL/SHM so reads don't block behind the app."""
+    target = tmpdir / db_path.name
+    shutil.copy2(db_path, target)
+    for suffix in ("-wal", "-shm"):
+        sidecar = Path(str(db_path) + suffix)
+        if sidecar.exists():
+            shutil.copy2(sidecar, Path(str(target) + suffix))
+    return target
+
+
 def extract_request_template(cache_db: Path) -> tuple[dict[str, str], dict[str, Any]]:
-    con = sqlite3.connect(f"file:{cache_db}?mode=ro", uri=True)
-    con.row_factory = sqlite3.Row
-    candidates: list[tuple[int, dict[str, str], dict[str, Any]]] = []
-    for row in con.execute("SELECT entry_ID, request_object FROM cfurl_cache_blob_data ORDER BY entry_ID"):
-        try:
-            archived = plistlib.loads(row["request_object"])
-            arr = archived["Array"]
-            url = arr[1].get("_CFURLString", "") if isinstance(arr[1], dict) else ""
-            if QUERY_ENDPOINT not in url:
+    with tempfile.TemporaryDirectory(prefix="renpho-cache-") as tmp:
+        cache_copy = copy_sqlite_for_reading(cache_db, Path(tmp))
+        con = sqlite3.connect(f"file:{cache_copy}?mode=ro", uri=True, timeout=5)
+        con.row_factory = sqlite3.Row
+        candidates: list[tuple[int, dict[str, str], dict[str, Any]]] = []
+        for row in con.execute("SELECT entry_ID, request_object FROM cfurl_cache_blob_data ORDER BY entry_ID"):
+            try:
+                archived = plistlib.loads(row["request_object"])
+                arr = archived["Array"]
+                url = arr[1].get("_CFURLString", "") if isinstance(arr[1], dict) else ""
+                if QUERY_ENDPOINT not in url:
+                    continue
+                headers = dict(arr[19])
+                body_bytes = arr[21][0]
+                body = json.loads(body_bytes.decode("utf-8"))
+                query = decrypt_payload(body["encryptData"])
+                if not query.get("tableName") or not query.get("userIds"):
+                    continue
+                candidates.append((int(row["entry_ID"]), headers, query))
+            except Exception:
                 continue
-            headers = dict(arr[19])
-            body_bytes = arr[21][0]
-            body = json.loads(body_bytes.decode("utf-8"))
-            query = decrypt_payload(body["encryptData"])
-            if not query.get("tableName") or not query.get("userIds"):
-                continue
-            candidates.append((int(row["entry_ID"]), headers, query))
-        except Exception:
-            continue
+        con.close()
     if not candidates:
         raise RuntimeError(f"No cached RENPHO {QUERY_ENDPOINT} request found in {cache_db}")
     _, headers, query = candidates[-1]

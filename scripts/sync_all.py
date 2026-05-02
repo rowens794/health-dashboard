@@ -159,7 +159,7 @@ def write_status(results: dict[str, dict[str, str]], started_at: str, finished_a
         "finished_at": finished_at,
         "overall": "ok" if all(result["status"] == "ok" for result in results.values()) else "error",
         "sources": {
-            key: {"label": SOURCES[key], **value}
+            key: {"label": SOURCES.get(key, key), **value}
             for key, value in results.items()
         },
         "data": data_summary(),
@@ -175,12 +175,14 @@ def git_commit(message: str, push: bool) -> tuple[int, str]:
     code, out = run(["git", "commit", "-m", message], timeout=60)
     if code != 0:
         return code, out
+    commit = run(["git", "rev-parse", "--short", "HEAD"], timeout=30)[1].strip()
+    summary = f"committed {commit}"
     if push:
         push_code, push_out = run(["git", "push"], timeout=120)
         if push_code != 0:
             return push_code, push_out
-        return 0, f"{out}\n{push_out}".strip()
-    return 0, out
+        return 0, f"{summary}; pushed"
+    return 0, summary
 
 
 def main() -> int:
