@@ -4,6 +4,10 @@ const TDEE_WINDOW_DAYS = 14;
 const number = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const oneDecimal = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
+function fmt(value, formatter = number, suffix = '') {
+  return Number.isFinite(value) ? `${formatter.format(value)}${suffix}` : '—';
+}
+
 function parseCsv(csv) {
   const [headerLine, ...lines] = csv.trim().split(/\r?\n/).filter(Boolean);
   const headers = headerLine.split(',').map((h) => h.trim());
@@ -14,6 +18,7 @@ function parseCsv(csv) {
     return {
       date: row.date,
       weight_lbs: parseFloat(row.weight_lbs),
+      bodyfat_percent: parseFloat(row.bodyfat_percent),
       calories: parseInt(row.calories, 10),
       steps: parseInt(row.steps, 10),
       protein_g: parseInt(row.protein_g, 10),
@@ -64,7 +69,8 @@ function drawWeightChart(rows) {
   const width = rect.width;
   const height = rect.height;
   const pad = { top: 24, right: 22, bottom: 44, left: 58 };
-  const weights = rows.map((r) => r.weight_lbs).filter(Number.isFinite);
+  const chartRows = rows.filter((row) => Number.isFinite(row.weight_lbs));
+  const weights = chartRows.map((r) => r.weight_lbs).filter(Number.isFinite);
   const avgs = rows.map((_, i) => movingAverage(rows, i)).filter(Number.isFinite);
   const allValues = [...weights, ...avgs];
   const min = Math.floor(Math.min(...allValues) - 1);
@@ -98,13 +104,14 @@ function drawWeightChart(rows) {
     }
   });
 
-  drawLine(ctx, rows.map((row, i) => ({ x: x(i), y: y(row.weight_lbs), value: row.weight_lbs })), '#72ddf7', 3);
+  drawLine(ctx, rows.map((row, i) => (Number.isFinite(row.weight_lbs) ? { x: x(i), y: y(row.weight_lbs), value: row.weight_lbs } : null)).filter(Boolean), '#72ddf7', 3);
   drawLine(ctx, rows.map((row, i) => {
     const avg = movingAverage(rows, i);
     return avg ? { x: x(i), y: y(avg), value: avg } : null;
   }).filter(Boolean), '#f7b267', 3);
 
   rows.forEach((row, i) => {
+    if (!Number.isFinite(row.weight_lbs)) return;
     ctx.beginPath();
     ctx.fillStyle = '#72ddf7';
     ctx.arc(x(i), y(row.weight_lbs), 3.5, 0, Math.PI * 2);
@@ -132,27 +139,29 @@ function renderTable(rows) {
     const tdee = estimateTdee(rows, i);
     return `<tr>
       <td>${row.date}</td>
-      <td>${oneDecimal.format(row.weight_lbs)} lb</td>
-      <td>${number.format(row.calories)}</td>
-      <td>${number.format(row.steps)}</td>
-      <td>${number.format(row.protein_g)}g</td>
-      <td>${number.format(row.carbs_g)}g</td>
-      <td>${number.format(row.fat_g)}g</td>
-      <td>${tdee ? number.format(tdee) : '—'}</td>
+      <td>${fmt(row.weight_lbs, oneDecimal, ' lb')}</td>
+      <td>${fmt(row.bodyfat_percent, oneDecimal, '%')}</td>
+      <td>${fmt(row.calories)}</td>
+      <td>${fmt(row.steps)}</td>
+      <td>${fmt(row.protein_g, number, 'g')}</td>
+      <td>${fmt(row.carbs_g, number, 'g')}</td>
+      <td>${fmt(row.fat_g, number, 'g')}</td>
+      <td>${fmt(tdee)}</td>
     </tr>`;
   }).reverse().join('');
 }
 
 function renderSummary(rows) {
-  const latest = rows.at(-1);
-  const prior = rows.at(-8) ?? rows[0];
+  const latest = [...rows].reverse().find((row) => Number.isFinite(row.weight_lbs)) ?? rows.at(-1);
+  const weightedRows = rows.filter((row) => Number.isFinite(row.weight_lbs));
+  const prior = weightedRows.at(-8) ?? weightedRows[0] ?? latest;
   const weightChange = latest.weight_lbs - prior.weight_lbs;
   const avgSteps = rows.slice(-7).reduce((sum, row) => sum + row.steps, 0) / Math.min(7, rows.length);
   const latestTdee = estimateTdee(rows, rows.length - 1);
 
   document.getElementById('summary-card').innerHTML = `<div class="status-grid">
-    <span><strong>${oneDecimal.format(latest.weight_lbs)} lb</strong>latest weight</span>
-    <span><strong>${weightChange > 0 ? '+' : ''}${oneDecimal.format(weightChange)} lb</strong>7-day change</span>
+    <span><strong>${fmt(latest.weight_lbs, oneDecimal, ' lb')}</strong>latest weight</span>
+    <span><strong>${Number.isFinite(weightChange) && weightChange > 0 ? '+' : ''}${fmt(weightChange, oneDecimal, ' lb')}</strong>7-day change</span>
     <span><strong>${number.format(avgSteps)}</strong>avg steps</span>
     <span><strong>${latestTdee ? number.format(latestTdee) : '—'}</strong>est. TDEE</span>
   </div>`;

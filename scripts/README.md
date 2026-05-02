@@ -12,3 +12,11 @@ Target behavior:
 6. Commit/push so GitHub Pages updates
 
 The first dashboard version is intentionally CSV-first so the data contract stays simple while integrations are hardened.
+
+## RENPHO
+
+`scripts/sync_renpho_local_db.py` reads the app's local SQLite tables when they contain scale rows.
+
+On this Mac those tables can be empty even when the app shows cloud history, so `scripts/sync_renpho_cloud_cache.py` is the working connector. It reuses the logged-in RENPHO Health macOS app cache request template, decrypts/encrypts the app's AES payload format, fetches `queryAllMeasureDataList` pages, and writes daily `weight_lbs` plus `bodyfat_percent` to `data/health.csv`.
+
+No RENPHO credentials or tokens are stored in the repo; the script reads the current app cache at runtime. If the cached token expires, open RENPHO Health once and rerun the script.
