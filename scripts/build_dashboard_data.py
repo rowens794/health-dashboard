@@ -14,6 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW_CSV = ROOT / "data" / "health.csv"
+DEXA_CSV = ROOT / "data" / "dexa.csv"
 OUT_CSV = ROOT / "data" / "dashboard-health.csv"
 
 FIELDS = [
@@ -25,6 +26,8 @@ FIELDS = [
     "carbs_g",
     "fat_g",
     "bodyfat_percent",
+    "dexa_fat_free_mass_lbs",
+    "scale_bodyfat_percent",
     "imputed_fields",
 ]
 
@@ -36,11 +39,6 @@ def as_float(value: str | None) -> float | None:
         return float(value)
     except ValueError:
         return None
-
-
-def as_int(value: str | None) -> int | None:
-    number = as_float(value)
-    return None if number is None else round(number)
 
 
 def true_weight(row: dict[str, str]) -> float | None:
@@ -85,7 +83,49 @@ def nearest_n(rows: list[dict[str, str]], index: int, getter, n: int = 7) -> lis
     return [value for _, value in candidates[:n]]
 
 
-def build_rows(raw_rows: list[dict[str, str]]) -> list[dict[str, str]]:
+def load_dexa_anchors(path: Path) -> list[dict[str, float | str]]:
+    if not path.exists():
+        return []
+    with path.open(newline="") as f:
+        anchors = list(csv.DictReader(f))
+    out = []
+    for anchor in anchors:
+        ffm = as_float(anchor.get("fat_free_mass_lbs"))
+        if anchor.get("date") and ffm is not None:
+            out.append({"date": anchor["date"], "fat_free_mass_lbs": ffm})
+    return sorted(out, key=lambda row: str(row["date"]))
+
+
+def interpolate_dexa_ffm(date: str, anchors: list[dict[str, float | str]]) -> float | None:
+    if not anchors:
+        return None
+    if date <= str(anchors[0]["date"]):
+        return float(anchors[0]["fat_free_mass_lbs"])
+    if date >= str(anchors[-1]["date"]):
+        return float(anchors[-1]["fat_free_mass_lbs"])
+    for left, right in zip(anchors, anchors[1:]):
+        left_date = str(left["date"])
+        right_date = str(right["date"])
+        if left_date <= date <= right_date:
+            # ISO dates sort lexically and datetime is overkill; use ordinal via fromisoformat locally.
+            import datetime as dt
+            l_ord = dt.date.fromisoformat(left_date).toordinal()
+            r_ord = dt.date.fromisoformat(right_date).toordinal()
+            d_ord = dt.date.fromisoformat(date).toordinal()
+            fraction = (d_ord - l_ord) / max(1, r_ord - l_ord)
+            l_ffm = float(left["fat_free_mass_lbs"])
+            r_ffm = float(right["fat_free_mass_lbs"])
+            return l_ffm + (r_ffm - l_ffm) * fraction
+    return None
+
+
+def dexa_bodyfat_percent(weight_lbs: float | None, fat_free_mass_lbs: float | None) -> float | None:
+    if weight_lbs is None or fat_free_mass_lbs is None or weight_lbs <= 0:
+        return None
+    return max(0.0, (weight_lbs - fat_free_mass_lbs) / weight_lbs * 100)
+
+
+def build_rows(raw_rows: list[dict[str, str]], dexa_anchors: list[dict[str, float | str]]) -> list[dict[str, str]]:
     rows = [dict(row) for row in raw_rows]
     out: list[dict[str, str]] = []
 
@@ -106,17 +146,16 @@ def build_rows(raw_rows: list[dict[str, str]]) -> list[dict[str, str]]:
         else:
             new["weight_lbs"] = f"{weight:.1f}"
 
-        bodyfat = true_positive(row, "bodyfat_percent")
-        if bodyfat is None and "weight_lbs" in imputed:
-            before, after = nearest_before_after(rows, i, lambda r: true_positive(r, "bodyfat_percent"))
-            values = [v for v in (before, after) if v is not None]
-            if values:
-                new["bodyfat_percent"] = f"{statistics.fmean(values):.1f}"
-                imputed.append("bodyfat_percent")
-            else:
-                new["bodyfat_percent"] = ""
-        elif bodyfat is not None:
-            new["bodyfat_percent"] = f"{bodyfat:.1f}"
+        scale_bodyfat = true_positive(row, "bodyfat_percent")
+        new["scale_bodyfat_percent"] = f"{scale_bodyfat:.1f}" if scale_bodyfat is not None else ""
+        ffm = interpolate_dexa_ffm(row.get("date", ""), dexa_anchors)
+        dexa_bf = dexa_bodyfat_percent(weight, ffm)
+        if ffm is not None:
+            new["dexa_fat_free_mass_lbs"] = f"{ffm:.1f}"
+        if dexa_bf is not None:
+            new["bodyfat_percent"] = f"{dexa_bf:.1f}"
+        elif scale_bodyfat is not None:
+            new["bodyfat_percent"] = f"{scale_bodyfat:.1f}"
         else:
             new["bodyfat_percent"] = ""
 
@@ -152,18 +191,20 @@ def build_rows(raw_rows: list[dict[str, str]]) -> list[dict[str, str]]:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build dashboard-health.csv from raw health.csv")
     parser.add_argument("--input", type=Path, default=RAW_CSV)
+    parser.add_argument("--dexa", type=Path, default=DEXA_CSV)
     parser.add_argument("--output", type=Path, default=OUT_CSV)
     args = parser.parse_args()
 
     with args.input.open(newline="") as f:
         raw_rows = list(csv.DictReader(f))
-    rows = build_rows(raw_rows)
+    dexa_anchors = load_dexa_anchors(args.dexa)
+    rows = build_rows(raw_rows, dexa_anchors)
     with args.output.open("w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=FIELDS)
         writer.writeheader()
         writer.writerows(rows)
     imputed_count = sum(bool(row["imputed_fields"]) for row in rows)
-    print(f"wrote {args.output} with {len(rows)} rows; {imputed_count} rows imputed")
+    print(f"wrote {args.output} with {len(rows)} rows; {imputed_count} rows imputed; {len(dexa_anchors)} DEXA anchors")
     return 0
 
 

@@ -174,7 +174,7 @@ def write_status(results: dict[str, dict[str, str]], started_at: str, finished_a
 
 
 def git_commit(message: str, push: bool) -> tuple[int, str]:
-    run(["git", "add", "data/health.csv", "data/dashboard-health.csv", "data/sync-log.csv", "data/sync-status.json"], timeout=30)
+    run(["git", "add", "data/health.csv", "data/dashboard-health.csv", "data/dexa.csv", "data/sync-log.csv", "data/sync-status.json"], timeout=30)
     diff_code, _ = run(["git", "diff", "--cached", "--quiet"], timeout=30)
     if diff_code == 0:
         return 0, "no data changes to commit"

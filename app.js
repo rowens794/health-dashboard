@@ -20,6 +20,8 @@ function parseCsv(csv) {
       date: row.date,
       weight_lbs: parseFloat(row.weight_lbs),
       bodyfat_percent: parseFloat(row.bodyfat_percent),
+      dexa_fat_free_mass_lbs: parseFloat(row.dexa_fat_free_mass_lbs),
+      scale_bodyfat_percent: parseFloat(row.scale_bodyfat_percent),
       calories: parseInt(row.calories, 10),
       steps: parseInt(row.steps, 10),
       protein_g: parseInt(row.protein_g, 10),
@@ -195,8 +197,8 @@ function renderSummary(rows) {
 
   document.getElementById('summary-card').innerHTML = `<div class="status-grid">
     <span><strong>${fmt(latest.weight_lbs, oneDecimal, ' lb')}</strong>latest weight</span>
+    <span><strong>${fmt(latest.bodyfat_percent, oneDecimal, '%')}</strong>DEXA-est. body fat</span>
     <span><strong>${Number.isFinite(weightChange) && weightChange > 0 ? '+' : ''}${fmt(weightChange, oneDecimal, ' lb')}</strong>7-day change</span>
-    <span><strong>${number.format(avgSteps)}</strong>avg steps</span>
     <span><strong>${latestTdee ? number.format(latestTdee) : '—'}</strong>est. TDEE</span>
   </div>`;
 }

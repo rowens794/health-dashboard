@@ -1,6 +1,6 @@
 # Health Dashboard
 
-Static CSV-backed dashboard for tracking weight, calories/macros, steps, and estimated TDEE.
+Static CSV-backed dashboard for tracking weight, DEXA-estimated body fat, calories/macros, steps, and estimated TDEE.
 
 ## What it shows
 
@@ -10,7 +10,7 @@ Static CSV-backed dashboard for tracking weight, calories/macros, steps, and est
 - Daily table with:
   - Date
   - Weight
-  - Body fat
+  - DEXA-estimated body fat
   - Calories
   - Steps
   - Protein
@@ -20,14 +20,24 @@ Static CSV-backed dashboard for tracking weight, calories/macros, steps, and est
 
 ## Data file
 
-Raw syncs write `data/health.csv`. The dashboard reads `data/dashboard-health.csv`, which is generated from the raw CSV with obvious bad weight rows removed and missing values imputed for presentation.
+Raw syncs write `data/health.csv`. DEXA scan anchors live in `data/dexa.csv`. The dashboard reads `data/dashboard-health.csv`, which is generated from the raw CSV with obvious bad weight rows removed, missing values imputed for presentation, and body-fat percentage recalculated from DEXA fat-free-mass anchors plus daily weight.
 
 ```csv
-date,weight_lbs,calories,steps,protein_g,carbs_g,fat_g,bodyfat_percent,imputed_fields
-2026-05-01,172.0,443,10773,28,58,16,17.8,
+date,weight_lbs,calories,steps,protein_g,carbs_g,fat_g,bodyfat_percent,dexa_fat_free_mass_lbs,scale_bodyfat_percent,imputed_fields
+2026-05-01,172.0,443,10773,28,58,16,16.6,143.4,17.8,
 ```
 
-Keep one row per day. A future sync script can update today's row three times a day as Garmin, Renpho, and MyFitnessPal data arrive.
+Keep one row per day in the raw CSV. `bodyfat_percent` in the dashboard CSV is DEXA-estimated; `scale_bodyfat_percent` preserves the RENPHO scale value for comparison.
+
+## DEXA body-fat estimate
+
+`data/dexa.csv` stores scan anchors with total mass, fat mass, lean tissue, bone mineral content, and fat-free mass. The dashboard estimates daily body fat as:
+
+```text
+bodyfat_percent = (daily_weight_lbs - dexa_fat_free_mass_lbs) / daily_weight_lbs * 100
+```
+
+Between scans, fat-free mass is linearly interpolated. Before the first scan it uses the first scan's fat-free mass; after the latest scan it carries forward the latest scan's fat-free mass.
 
 ## Estimated TDEE
 
