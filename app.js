@@ -113,6 +113,16 @@ function renderSyncStatus(status) {
 
 function drawMetricChart(rows) {
   const canvas = document.getElementById('weight-chart');
+  const weeklyTable = document.getElementById('weekly-table-wrap');
+  const showWeekly = activeMetric === 'weekly';
+  canvas.classList.toggle('hidden', showWeekly);
+  weeklyTable.classList.toggle('hidden', !showWeekly);
+
+  if (showWeekly) {
+    renderWeeklyAverages(rows);
+    return;
+  }
+
   const ctx = canvas.getContext('2d');
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
@@ -191,6 +201,63 @@ function drawTdeeChart(ctx, rows, layout) {
   }).filter(Boolean), '#72ddf7', 3);
 }
 
+function avg(values) {
+  const finite = values.filter(Number.isFinite);
+  if (!finite.length) return null;
+  return finite.reduce((sum, value) => sum + value, 0) / finite.length;
+}
+
+function renderWeeklyAverages(rows) {
+  const el = document.getElementById('weekly-table-wrap');
+  const weeks = [];
+  for (let start = 0; start < rows.length; start += 7) {
+    const weekRows = rows.slice(start, start + 7);
+    weeks.push({
+      label: `Week ${weeks.length + 1}`,
+      range: `${weekRows[0].date.slice(5)}–${weekRows.at(-1).date.slice(5)}`,
+      weight: avg(weekRows.map((row) => row.weight_lbs)),
+      bodyfat: avg(weekRows.map((row) => row.bodyfat_percent)),
+      calories: avg(weekRows.map((row) => row.calories)),
+      steps: avg(weekRows.map((row) => row.steps)),
+      protein: avg(weekRows.map((row) => row.protein_g)),
+      carbs: avg(weekRows.map((row) => row.carbs_g)),
+      fat: avg(weekRows.map((row) => row.fat_g)),
+      tdee: avg(weekRows.map((row) => estimateTdee(rows, rows.indexOf(row)))),
+    });
+  }
+
+  el.innerHTML = `<table class="weekly-table">
+    <thead>
+      <tr>
+        <th>Week</th>
+        <th>Range</th>
+        <th>Weight</th>
+        <th>DEXA-est. BF</th>
+        <th>Cals</th>
+        <th>Steps</th>
+        <th>Protein</th>
+        <th>Carbs</th>
+        <th>Fat</th>
+        <th>Est. TDEE</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${weeks.reverse().map((week) => `<tr>
+        <td>${week.label}</td>
+        <td>${week.range}</td>
+        <td>${fmt(week.weight, oneDecimal, ' lb')}</td>
+        <td>${fmt(week.bodyfat, oneDecimal, '%')}</td>
+        <td>${fmt(week.calories)}</td>
+        <td>${fmt(week.steps)}</td>
+        <td>${fmt(week.protein, number, 'g')}</td>
+        <td>${fmt(week.carbs, number, 'g')}</td>
+        <td>${fmt(week.fat, number, 'g')}</td>
+        <td>${fmt(week.tdee)}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
 function drawGrid(ctx, { width, pad, min, max, step, y, formatter }) {
   ctx.strokeStyle = '#2a3546';
   ctx.fillStyle = '#9facbd';
@@ -242,6 +309,11 @@ function updateChartChrome() {
       title: 'Estimated TDEE',
       description: '35-day rolling TDEE estimate based on calories and smoothed weight change.',
       legend: '<span><i class="dot weight"></i> Est. TDEE</span>',
+    },
+    weekly: {
+      title: 'Weekly averages',
+      description: 'Weekly averages for the daily log, newest week first.',
+      legend: '',
     },
   };
   const config = configs[activeMetric];
