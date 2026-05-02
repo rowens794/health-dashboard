@@ -1,6 +1,7 @@
 const DATA_URL = 'data/dashboard-health.csv';
 const STATUS_URL = 'data/sync-status.json';
-const TDEE_WINDOW_DAYS = 14;
+const TDEE_WINDOW_DAYS = 35;
+const TDEE_MIN_DAYS = 28;
 
 const number = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const oneDecimal = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -38,20 +39,25 @@ function movingAverage(rows, index, days = 7) {
 }
 
 function estimateTdee(rows, index, windowDays = TDEE_WINDOW_DAYS) {
-  const start = Math.max(0, index - windowDays);
-  const window = rows.slice(start, index + 1).filter((r) => Number.isFinite(r.weight_lbs) && Number.isFinite(r.calories));
-  if (window.length < Math.min(8, windowDays)) return null;
+  const end = index;
+  const start = Math.max(0, end - windowDays + 1);
+  const window = rows.slice(start, end + 1).filter((r) => Number.isFinite(r.weight_lbs) && Number.isFinite(r.calories));
+  if (window.length < TDEE_MIN_DAYS) return null;
 
-  const first = window[0];
-  const last = window[window.length - 1];
-  const elapsedDays = Math.max(1, daysBetween(first.date, last.date));
-  if (elapsedDays < 7) return null;
+  const firstIndex = rows.indexOf(window[0]);
+  const lastIndex = rows.indexOf(window[window.length - 1]);
+  const firstAvgWeight = movingAverage(rows, firstIndex);
+  const lastAvgWeight = movingAverage(rows, lastIndex);
+  if (!Number.isFinite(firstAvgWeight) || !Number.isFinite(lastAvgWeight)) return null;
+
+  const elapsedDays = Math.max(1, daysBetween(window[0].date, window[window.length - 1].date));
+  if (elapsedDays < TDEE_MIN_DAYS - 1) return null;
 
   const avgCalories = window.reduce((sum, row) => sum + row.calories, 0) / window.length;
-  const weightDeltaLbs = last.weight_lbs - first.weight_lbs;
+  const weightDeltaLbs = lastAvgWeight - firstAvgWeight;
   const dailyWeightEnergy = (weightDeltaLbs * 3500) / elapsedDays;
 
-  // If weight is falling, dailyWeightEnergy is negative, so subtracting it raises TDEE.
+  // If average weight is falling, dailyWeightEnergy is negative, so subtracting it raises TDEE.
   return avgCalories - dailyWeightEnergy;
 }
 

@@ -41,13 +41,13 @@ Between scans, fat-free mass is linearly interpolated. Before the first scan it 
 
 ## Estimated TDEE
 
-Estimated TDEE is calculated from rolling history:
+Estimated TDEE is calculated as a smoother trend metric using a 35-day window and 7-day moving-average weights:
 
 ```text
-est_tdee = average daily calories - ((weight_change_lbs * 3500) / elapsed_days)
+est_tdee = average daily calories - ((7-day_avg_weight_change_lbs * 3500) / elapsed_days)
 ```
 
-So if weight drops while calories are steady, estimated TDEE rises. The dashboard waits until there is enough history before showing a value.
+So if average weight drops while calories are steady, estimated TDEE rises. The dashboard hides TDEE until there are at least 28 days of usable history.
 
 This is intentionally a trend estimate, not a precise daily measurement.
 
