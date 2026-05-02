@@ -375,3 +375,8 @@ sync_at,source,status,message
 2026-05-01T21:47:16-04:00,mfp:rowens794,ok,"2026-05-01: 443 cal, P28/C58/F16"
 2026-05-01T21:47:16-04:00,garmin:steps,ok,2026-05-01: 10773 steps
 2026-05-01T21:47:21-04:00,renpho:cloud-cache,ok,imported 223 daily weights from 694 RENPHO measurements
+2026-05-01T21:47:35-04:00,mfp:rowens794,ok,"2026-05-01: 443 cal, P28/C58/F16"
+2026-05-01T21:47:35-04:00,garmin:steps,ok,2026-05-01: 10773 steps
+2026-05-01T21:50:34-04:00,mfp:rowens794,ok,"2026-05-01: 443 cal, P28/C58/F16"
+2026-05-01T21:50:35-04:00,garmin:steps,ok,2026-05-01: 10773 steps
+2026-05-01T21:50:37-04:00,renpho:cloud-cache,ok,imported 223 daily weights from 694 RENPHO measurements
