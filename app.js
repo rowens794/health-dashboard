@@ -117,6 +117,8 @@ function drawMetricChart(rows) {
   const showWeekly = activeMetric === 'weekly';
   canvas.classList.toggle('hidden', showWeekly);
   weeklyTable.classList.toggle('hidden', !showWeekly);
+  canvas.hidden = showWeekly;
+  weeklyTable.hidden = !showWeekly;
 
   if (showWeekly) {
     renderWeeklyAverages(rows);
