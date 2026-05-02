@@ -101,16 +101,25 @@ def open_renpho_app() -> None:
     subprocess.run(["open", "-gja", "RENPHO Health"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
 
 
-def sync_mfp(date: str, port: int) -> dict[str, str]:
-    ensure_mfp_chrome(date, port)
-    code, out = run([
-        sys.executable,
-        str(SCRIPTS / "sync_mfp_public_diary.py"),
-        "--date", date,
-        "--chrome-cdp-port", str(port),
-        "--chrome-navigate",
-    ], timeout=90)
-    return {"status": "ok" if code == 0 else "error", "message": out or f"exit {code}"}
+def sync_mfp(date: str, port: int, lookback_days: int = 1) -> dict[str, str]:
+    dates = [
+        (dt.date.fromisoformat(date) - dt.timedelta(days=offset)).isoformat()
+        for offset in range(max(0, lookback_days), -1, -1)
+    ]
+    ensure_mfp_chrome(dates[0], port)
+    messages: list[str] = []
+    overall_ok = True
+    for sync_date in dates:
+        code, out = run([
+            sys.executable,
+            str(SCRIPTS / "sync_mfp_public_diary.py"),
+            "--date", sync_date,
+            "--chrome-cdp-port", str(port),
+            "--chrome-navigate",
+        ], timeout=90)
+        overall_ok = overall_ok and code == 0
+        messages.append(out or f"{sync_date}: exit {code}")
+    return {"status": "ok" if overall_ok else "error", "message": " | ".join(messages)}
 
 
 def sync_garmin(date: str, port: int) -> dict[str, str]:
@@ -196,6 +205,7 @@ def main() -> int:
     parser.add_argument("--date", default=today())
     parser.add_argument("--start-date", default="2025-06-22")
     parser.add_argument("--mfp-port", type=int, default=9223)
+    parser.add_argument("--mfp-lookback-days", type=int, default=1, help="Also refresh this many prior days from MyFitnessPal")
     parser.add_argument("--garmin-port", type=int, default=9224)
     parser.add_argument("--no-renpho-open", action="store_true")
     parser.add_argument("--commit", action="store_true")
@@ -206,7 +216,7 @@ def main() -> int:
     results: dict[str, dict[str, str]] = {}
 
     for key, fn in [
-        ("mfp", lambda: sync_mfp(args.date, args.mfp_port)),
+        ("mfp", lambda: sync_mfp(args.date, args.mfp_port, args.mfp_lookback_days)),
         ("garmin", lambda: sync_garmin(args.date, args.garmin_port)),
         ("renpho", lambda: sync_renpho(args.start_date, not args.no_renpho_open)),
         ("dashboard", build_dashboard_data),
@@ -223,7 +233,8 @@ def main() -> int:
     if args.commit or args.push:
         code, out = git_commit(f"Sync health data {args.date}", args.push)
         results["git"] = {"status": "ok" if code == 0 else "error", "message": out}
-        write_status(results, started_at, now_iso())
+        # Do not rewrite sync-status.json after committing; doing so leaves the repo
+        # dirty on every scheduled run with a self-referential git status update.
 
     print(json.dumps(json.loads(STATUS_JSON.read_text()), indent=2))
     return 0 if all(result["status"] == "ok" for result in results.values()) else 1

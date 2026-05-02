@@ -386,3 +386,5 @@ sync_at,source,status,message
 2026-05-02T06:00:11-04:00,mfp:rowens794,ok,"2026-05-02: 0 cal, P0/C0/F0"
 2026-05-02T06:00:12-04:00,garmin:steps,error,"2026-05-02: Could not fetch Garmin steps 2026-05-02..2026-05-02: {'error': 'HTTP 401', 'text': ''}"
 2026-05-02T06:00:16-04:00,renpho:cloud-cache,ok,imported 222 daily weights from 694 RENPHO measurements
+2026-05-02T06:35:26-04:00,mfp:rowens794,ok,"2026-05-01: 2167 cal, P123/C229/F69"
+2026-05-02T06:35:27-04:00,mfp:rowens794,ok,"2026-05-02: 0 cal, P0/C0/F0"

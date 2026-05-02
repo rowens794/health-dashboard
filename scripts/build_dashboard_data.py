@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import datetime as dt
 import statistics
 from pathlib import Path
 
@@ -126,19 +127,25 @@ def dexa_bodyfat_percent(weight_lbs: float | None, fat_free_mass_lbs: float | No
     return max(0.0, (weight_lbs - fat_free_mass_lbs) / weight_lbs * 100)
 
 
-def build_rows(raw_rows: list[dict[str, str]], dexa_anchors: list[dict[str, float | str]]) -> list[dict[str, str]]:
+def build_rows(
+    raw_rows: list[dict[str, str]],
+    dexa_anchors: list[dict[str, float | str]],
+    current_date: str | None = None,
+) -> list[dict[str, str]]:
     rows = [dict(row) for row in raw_rows]
     out: list[dict[str, str]] = []
 
     for i, row in enumerate(rows):
         new = {field: row.get(field, "") for field in FIELDS if field != "imputed_fields"}
         imputed: list[str] = []
+        row_date = row.get("date", "")
+        allow_imputation = not current_date or row_date < current_date
 
         weight = true_weight(row)
         if weight is None:
             before, after = nearest_before_after(rows, i, true_weight)
             values = [v for v in (before, after) if v is not None]
-            if values:
+            if allow_imputation and values:
                 weight = statistics.fmean(values)
                 new["weight_lbs"] = f"{weight:.1f}"
                 imputed.append("weight_lbs")
@@ -164,7 +171,7 @@ def build_rows(raw_rows: list[dict[str, str]], dexa_anchors: list[dict[str, floa
             value = true_positive(row, field)
             if value is None:
                 values = nearest_n(rows, i, lambda r, f=field: true_positive(r, f), 7)
-                if values:
+                if allow_imputation and values:
                     new[field] = str(round(statistics.fmean(values) * 1.25))
                     imputed.append(field)
                 else:
@@ -175,7 +182,7 @@ def build_rows(raw_rows: list[dict[str, str]], dexa_anchors: list[dict[str, floa
         steps = true_positive(row, "steps")
         if steps is None:
             values = nearest_n(rows, i, lambda r: true_positive(r, "steps"), 7)
-            if values:
+            if allow_imputation and values:
                 new["steps"] = str(round(statistics.fmean(values) * 0.8))
                 imputed.append("steps")
             else:
@@ -195,12 +202,17 @@ def main() -> int:
     parser.add_argument("--dexa", type=Path, default=DEXA_CSV)
     parser.add_argument("--output", type=Path, default=OUT_CSV)
     parser.add_argument("--start-date", default=DEFAULT_START_DATE)
+    parser.add_argument(
+        "--current-date",
+        default=dt.date.today().isoformat(),
+        help="Do not impute rows on/after this ISO date; default: today",
+    )
     args = parser.parse_args()
 
     with args.input.open(newline="") as f:
         raw_rows = [row for row in csv.DictReader(f) if row.get("date", "") >= args.start_date]
     dexa_anchors = load_dexa_anchors(args.dexa)
-    rows = build_rows(raw_rows, dexa_anchors)
+    rows = build_rows(raw_rows, dexa_anchors, current_date=args.current_date)
     with args.output.open("w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=FIELDS)
         writer.writeheader()
