@@ -151,14 +151,6 @@ function drawWeightChart(rows) {
     const avg = movingAverage(rows, i);
     return avg ? { x: x(i), y: y(avg), value: avg } : null;
   }).filter(Boolean), '#f7b267', 3);
-
-  rows.forEach((row, i) => {
-    if (!Number.isFinite(row.weight_lbs)) return;
-    ctx.beginPath();
-    ctx.fillStyle = '#72ddf7';
-    ctx.arc(x(i), y(row.weight_lbs), 3.5, 0, Math.PI * 2);
-    ctx.fill();
-  });
 }
 
 function drawLine(ctx, points, color, width) {
