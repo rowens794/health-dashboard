@@ -226,11 +226,16 @@ function renderWeeklyAverages(rows) {
       calories: avg(weekRows.map((row) => row.calories)),
       steps: avg(weekRows.map((row) => row.steps)),
       protein: avg(weekRows.map((row) => row.protein_g)),
-      carbs: avg(weekRows.map((row) => row.carbs_g)),
-      fat: avg(weekRows.map((row) => row.fat_g)),
       tdee: avg(weekRows.map((row) => estimateTdee(rows, rows.indexOf(row)))),
     });
   }
+
+  weeks.forEach((week, i) => {
+    const nextWeek = weeks[i + 1];
+    week.weeklyLoss = Number.isFinite(week.weight) && Number.isFinite(nextWeek?.weight)
+      ? nextWeek.weight - week.weight
+      : null;
+  });
 
   el.innerHTML = `<table class="weekly-table">
     <thead>
@@ -238,12 +243,11 @@ function renderWeeklyAverages(rows) {
         <th>Week</th>
         <th>Range</th>
         <th>Weight</th>
+        <th>Weekly loss</th>
         <th>DEXA-est. BF</th>
         <th>Cals</th>
         <th>Steps</th>
         <th>Protein</th>
-        <th>Carbs</th>
-        <th>Fat</th>
         <th>Est. TDEE</th>
       </tr>
     </thead>
@@ -252,12 +256,11 @@ function renderWeeklyAverages(rows) {
         <td>${week.label}</td>
         <td>${week.range}</td>
         <td>${fmt(week.weight, oneDecimal, ' lb')}</td>
+        <td>${fmt(week.weeklyLoss, oneDecimal, ' lb')}</td>
         <td>${fmt(week.bodyfat, oneDecimal, '%')}</td>
         <td>${fmt(week.calories)}</td>
         <td>${fmt(week.steps)}</td>
         <td>${fmt(week.protein, number, 'g')}</td>
-        <td>${fmt(week.carbs, number, 'g')}</td>
-        <td>${fmt(week.fat, number, 'g')}</td>
         <td>${fmt(week.tdee)}</td>
       </tr>`).join('')}
     </tbody>
