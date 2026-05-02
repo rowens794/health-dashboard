@@ -10,6 +10,15 @@ function fmt(value, formatter = number, suffix = '') {
   return Number.isFinite(value) ? `${formatter.format(value)}${suffix}` : '—';
 }
 
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"]/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+  }[char]));
+}
+
 function parseCsv(csv) {
   const [headerLine, ...lines] = csv.trim().split(/\r?\n/).filter(Boolean);
   const headers = headerLine.split(',').map((h) => h.trim());
@@ -84,17 +93,15 @@ function renderSyncStatus(status) {
     return;
   }
   const sourceCards = Object.values(status.sources || {}).map((source) => `
-    <div class="sync-item ${source.status === 'ok' ? 'ok' : 'warn'}">
-      <strong>${source.label}</strong>
+    <div class="sync-item ${source.status === 'ok' ? 'ok' : 'warn'}" title="${escapeHtml(source.message || '')}">
+      <strong>${escapeHtml(source.label)}</strong>
       <span>${source.status === 'ok' ? 'OK' : 'Needs attention'}</span>
-      <small>${source.message || ''}</small>
     </div>
   `).join('');
   el.innerHTML = `
-    <div class="sync-item ${status.overall === 'ok' ? 'ok' : 'warn'}">
+    <div class="sync-item ${status.overall === 'ok' ? 'ok' : 'warn'}" title="${escapeHtml(status.finished_at || '—')}">
       <strong>Last run</strong>
       <span>${relativeTime(status.finished_at)}</span>
-      <small>${status.finished_at || '—'}</small>
     </div>
     ${sourceCards}
   `;
