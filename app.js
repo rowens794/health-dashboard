@@ -231,9 +231,9 @@ function renderWeeklyAverages(rows) {
   }
 
   weeks.forEach((week, i) => {
-    const nextWeek = weeks[i + 1];
-    week.weeklyLoss = Number.isFinite(week.weight) && Number.isFinite(nextWeek?.weight)
-      ? nextWeek.weight - week.weight
+    const previousWeek = weeks[i - 1];
+    week.weeklyLoss = Number.isFinite(week.weight) && Number.isFinite(previousWeek?.weight)
+      ? week.weight - previousWeek.weight
       : null;
   });
 
