@@ -1,7 +1,8 @@
 const DATA_URL = 'data/dashboard-health.csv';
 const STATUS_URL = 'data/sync-status.json';
-const TDEE_WINDOW_DAYS = 35;
-const TDEE_MIN_DAYS = 28;
+const TDEE_LONG_WINDOW_DAYS = 35;
+const TDEE_SHORT_WINDOW_DAYS = 14;
+const TDEE_MIN_DAYS = { 14: 10, 35: 28 };
 let dashboardRows = [];
 let activeMetric = 'weight';
 
@@ -39,6 +40,7 @@ function parseCsv(csv) {
       protein_g: parseInt(row.protein_g, 10),
       carbs_g: parseInt(row.carbs_g, 10),
       fat_g: parseInt(row.fat_g, 10),
+      imputed_fields: new Set((row.imputed_fields || '').split(';').filter(Boolean)),
     };
   }).sort((a, b) => a.date.localeCompare(b.date));
 }
@@ -53,27 +55,44 @@ function movingAverage(rows, index, days = 7) {
   return averageMetric(rows, index, 'weight_lbs', days);
 }
 
-function estimateTdee(rows, index, windowDays = TDEE_WINDOW_DAYS) {
+function tdeeWindowRows(rows, index, windowDays) {
   const end = index;
   const start = Math.max(0, end - windowDays + 1);
-  const window = rows.slice(start, end + 1).filter((r) => Number.isFinite(r.weight_lbs) && Number.isFinite(r.calories));
-  if (window.length < TDEE_MIN_DAYS) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  return rows.slice(start, end + 1).filter((row) => (
+    row.date < today
+    && Number.isFinite(row.weight_lbs)
+    && Number.isFinite(row.calories)
+    && row.calories > 0
+    && !row.imputed_fields?.has('calories')
+  ));
+}
 
-  const firstIndex = rows.indexOf(window[0]);
-  const lastIndex = rows.indexOf(window[window.length - 1]);
-  const firstAvgWeight = movingAverage(rows, firstIndex);
-  const lastAvgWeight = movingAverage(rows, lastIndex);
-  if (!Number.isFinite(firstAvgWeight) || !Number.isFinite(lastAvgWeight)) return null;
+function linearSlope(points) {
+  if (points.length < 2) return null;
+  const avgX = points.reduce((sum, point) => sum + point.x, 0) / points.length;
+  const avgY = points.reduce((sum, point) => sum + point.y, 0) / points.length;
+  const denominator = points.reduce((sum, point) => sum + ((point.x - avgX) ** 2), 0);
+  if (!denominator) return null;
+  return points.reduce((sum, point) => sum + ((point.x - avgX) * (point.y - avgY)), 0) / denominator;
+}
 
-  const elapsedDays = Math.max(1, daysBetween(window[0].date, window[window.length - 1].date));
-  if (elapsedDays < TDEE_MIN_DAYS - 1) return null;
+function estimateTdee(rows, index, windowDays = TDEE_LONG_WINDOW_DAYS) {
+  const window = tdeeWindowRows(rows, index, windowDays);
+  const minDays = TDEE_MIN_DAYS[windowDays] ?? Math.ceil(windowDays * 0.8);
+  if (window.length < minDays) return null;
+
+  const elapsedDays = daysBetween(window[0].date, window.at(-1).date);
+  if (elapsedDays < minDays - 1) return null;
+
+  const startDate = window[0].date;
+  const slopePoints = window.map((row) => ({ x: daysBetween(startDate, row.date), y: row.weight_lbs }));
+  const weightSlopeLbsPerDay = linearSlope(slopePoints);
+  if (!Number.isFinite(weightSlopeLbsPerDay)) return null;
 
   const avgCalories = window.reduce((sum, row) => sum + row.calories, 0) / window.length;
-  const weightDeltaLbs = lastAvgWeight - firstAvgWeight;
-  const dailyWeightEnergy = (weightDeltaLbs * 3500) / elapsedDays;
-
-  // If average weight is falling, dailyWeightEnergy is negative, so subtracting it raises TDEE.
-  return avgCalories - dailyWeightEnergy;
+  // If trend weight is falling, slope is negative, so subtracting it raises estimated maintenance.
+  return avgCalories - (weightSlopeLbsPerDay * 3500);
 }
 
 function daysBetween(a, b) {
@@ -189,7 +208,9 @@ function drawStepsChart(ctx, rows, layout) {
 
 function drawTdeeChart(ctx, rows, layout) {
   const { width, pad, chartHeight, x } = layout;
-  const points = rows.map((row, i) => ({ row, tdee: estimateTdee(rows, i) })).filter((p) => Number.isFinite(p.tdee));
+  const longPoints = rows.map((row, i) => ({ row, tdee: estimateTdee(rows, i, TDEE_LONG_WINDOW_DAYS) })).filter((p) => Number.isFinite(p.tdee));
+  const shortPoints = rows.map((row, i) => ({ row, tdee: estimateTdee(rows, i, TDEE_SHORT_WINDOW_DAYS) })).filter((p) => Number.isFinite(p.tdee));
+  const points = [...longPoints, ...shortPoints];
   if (!points.length) return;
   const values = points.map((p) => p.tdee);
   const min = Math.floor((Math.min(...values) - 100) / 100) * 100;
@@ -198,9 +219,13 @@ function drawTdeeChart(ctx, rows, layout) {
 
   drawGrid(ctx, { width, pad, min, max, step: 100, y, formatter: (v) => number.format(v) });
   drawLine(ctx, rows.map((row, i) => {
-    const tdee = estimateTdee(rows, i);
+    const tdee = estimateTdee(rows, i, TDEE_LONG_WINDOW_DAYS);
     return Number.isFinite(tdee) ? { x: x(i), y: y(tdee) } : null;
   }).filter(Boolean), '#72ddf7', 3);
+  drawLine(ctx, rows.map((row, i) => {
+    const tdee = estimateTdee(rows, i, TDEE_SHORT_WINDOW_DAYS);
+    return Number.isFinite(tdee) ? { x: x(i), y: y(tdee) } : null;
+  }).filter(Boolean), '#f7b267', 2);
 }
 
 function avg(values) {
@@ -226,7 +251,7 @@ function renderWeeklyAverages(rows) {
       calories: avg(weekRows.map((row) => row.calories)),
       steps: avg(weekRows.map((row) => row.steps)),
       protein: avg(weekRows.map((row) => row.protein_g)),
-      tdee: avg(weekRows.map((row) => estimateTdee(rows, rows.indexOf(row)))),
+      tdee: avg(weekRows.map((row) => estimateTdee(rows, rows.indexOf(row), TDEE_LONG_WINDOW_DAYS))),
     });
   }
 
@@ -316,8 +341,8 @@ function updateChartChrome() {
     },
     tdee: {
       title: 'Estimated TDEE',
-      description: '35-day rolling TDEE estimate based on calories and smoothed weight change.',
-      legend: '<span><i class="dot weight"></i> Est. TDEE</span>',
+      description: 'Regression-based TDEE from logged calories plus weight trend; 35-day stable line and 14-day responsive line.',
+      legend: '<span><i class="dot weight"></i> 35-day regression</span><span><i class="dot average"></i> 14-day regression</span>',
     },
     weekly: {
       title: 'Weekly averages',
@@ -351,7 +376,7 @@ function drawLine(ctx, points, color, width) {
 function renderTable(rows) {
   const tbody = document.getElementById('daily-table');
   tbody.innerHTML = rows.map((row, i) => {
-    const tdee = estimateTdee(rows, i);
+    const tdee = estimateTdee(rows, i, TDEE_LONG_WINDOW_DAYS);
     return `<tr>
       <td>${row.date}</td>
       <td>${fmt(row.weight_lbs, oneDecimal, ' lb')}</td>
@@ -372,7 +397,7 @@ function renderSummary(rows) {
   const prior = weightedRows.at(-8) ?? weightedRows[0] ?? latest;
   const weightChange = latest.weight_lbs - prior.weight_lbs;
   const avgSteps = rows.slice(-7).reduce((sum, row) => sum + row.steps, 0) / Math.min(7, rows.length);
-  const latestTdee = estimateTdee(rows, rows.length - 1);
+  const latestTdee = estimateTdee(rows, rows.length - 1, TDEE_LONG_WINDOW_DAYS);
 
   document.getElementById('summary-card').innerHTML = `<div class="status-grid">
     <span><strong>${fmt(latest.weight_lbs, oneDecimal, ' lb')}</strong>latest weight</span>
