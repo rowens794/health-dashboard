@@ -195,9 +195,13 @@ def rows_from_measurements(measurements: list[dict[str, Any]], start_date: str |
         date = measurement_date(record)
         if start_date and date < start_date:
             continue
+        lbs = normalize_lbs(record)
+        # Filter obvious non-user/body-unit errors before writing raw dashboard data.
+        if lbs < 120 or lbs > 250:
+            continue
         row = {
             "date": date,
-            "weight_lbs": f"{normalize_lbs(record):.1f}",
+            "weight_lbs": f"{lbs:.1f}",
         }
         if record.get("bodyfat") not in (None, ""):
             row["bodyfat_percent"] = f"{float(record['bodyfat']):.1f}"

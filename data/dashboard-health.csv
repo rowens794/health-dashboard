@@ -298,10 +298,10 @@ date,weight_lbs,calories,steps,protein_g,carbs_g,fat_g,bodyfat_percent,imputed_f
 2026-03-24,173.1,2281,9565,143,225,78,18.0,calories;protein_g;carbs_g;fat_g
 2026-03-25,173.8,2516,5095,77,393,64,18.2,
 2026-03-26,175.3,859,12009,91,62,31,18.5,
-2026-03-27,176.1,2490,13061,141,247,89,18.2,weight_lbs;bodyfat_percent;calories;protein_g;carbs_g;fat_g
-2026-03-28,176.1,2646,12511,149,265,95,18.0,weight_lbs;calories;protein_g;carbs_g;fat_g
-2026-03-29,176.1,2813,10060,151,274,104,18.4,weight_lbs;bodyfat_percent;calories;protein_g;carbs_g;fat_g
-2026-03-30,176.1,2324,10995,143,243,77,18.4,weight_lbs;bodyfat_percent
+2026-03-27,176.1,2490,13061,141,247,89,18.7,weight_lbs;bodyfat_percent;calories;protein_g;carbs_g;fat_g
+2026-03-28,176.1,2646,12511,149,265,95,18.7,weight_lbs;bodyfat_percent;calories;protein_g;carbs_g;fat_g
+2026-03-29,176.1,2813,10060,151,274,104,18.7,weight_lbs;bodyfat_percent;calories;protein_g;carbs_g;fat_g
+2026-03-30,176.1,2324,10995,143,243,77,18.7,weight_lbs;bodyfat_percent
 2026-03-31,176.8,1881,11849,133,132,63,18.9,
 2026-04-01,173.6,2599,11845,118,282,97,18.2,
 2026-04-02,177.5,2985,11726,125,296,126,18.9,
