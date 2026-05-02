@@ -2,6 +2,8 @@ const DATA_URL = 'data/dashboard-health.csv';
 const STATUS_URL = 'data/sync-status.json';
 const TDEE_WINDOW_DAYS = 35;
 const TDEE_MIN_DAYS = 28;
+let dashboardRows = [];
+let activeMetric = 'weight';
 
 const number = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const oneDecimal = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -41,10 +43,14 @@ function parseCsv(csv) {
   }).sort((a, b) => a.date.localeCompare(b.date));
 }
 
-function movingAverage(rows, index, days = 7) {
-  const slice = rows.slice(Math.max(0, index - days + 1), index + 1).filter((r) => Number.isFinite(r.weight_lbs));
+function averageMetric(rows, index, key, days = 7) {
+  const slice = rows.slice(Math.max(0, index - days + 1), index + 1).filter((r) => Number.isFinite(r[key]));
   if (slice.length < days) return null;
-  return slice.reduce((sum, row) => sum + row.weight_lbs, 0) / slice.length;
+  return slice.reduce((sum, row) => sum + row[key], 0) / slice.length;
+}
+
+function movingAverage(rows, index, days = 7) {
+  return averageMetric(rows, index, 'weight_lbs', days);
 }
 
 function estimateTdee(rows, index, windowDays = TDEE_WINDOW_DAYS) {
@@ -89,25 +95,23 @@ function relativeTime(iso) {
 function renderSyncStatus(status) {
   const el = document.getElementById('sync-status');
   if (!status) {
-    el.innerHTML = '<div class="sync-item warn"><strong>No sync status yet</strong><span>Run scripts/sync_all.py once.</span></div>';
+    el.innerHTML = '<span class="sync-state warn"><strong>Sync:</strong> no status yet</span>';
     return;
   }
-  const sourceCards = Object.values(status.sources || {}).map((source) => `
-    <div class="sync-item ${source.status === 'ok' ? 'ok' : 'warn'}" title="${escapeHtml(source.message || '')}">
-      <strong>${escapeHtml(source.label)}</strong>
-      <span>${source.status === 'ok' ? 'OK' : 'Needs attention'}</span>
-    </div>
+  const sourceSummary = Object.values(status.sources || {}).map((source) => `
+    <span class="sync-source ${source.status === 'ok' ? 'ok' : 'warn'}" title="${escapeHtml(source.message || '')}">
+      ${escapeHtml(source.label)}: <strong>${source.status === 'ok' ? 'OK' : 'Needs attention'}</strong>
+    </span>
   `).join('');
   el.innerHTML = `
-    <div class="sync-item ${status.overall === 'ok' ? 'ok' : 'warn'}" title="${escapeHtml(status.finished_at || '—')}">
-      <strong>Last run</strong>
-      <span>${relativeTime(status.finished_at)}</span>
-    </div>
-    ${sourceCards}
+    <span class="sync-state ${status.overall === 'ok' ? 'ok' : 'warn'}" title="${escapeHtml(status.finished_at || '—')}">
+      <strong>Sync:</strong> ${relativeTime(status.finished_at)}
+    </span>
+    ${sourceSummary}
   `;
 }
 
-function drawWeightChart(rows) {
+function drawMetricChart(rows) {
   const canvas = document.getElementById('weight-chart');
   const ctx = canvas.getContext('2d');
   const dpr = window.devicePixelRatio || 1;
@@ -118,46 +122,135 @@ function drawWeightChart(rows) {
 
   const width = rect.width;
   const height = rect.height;
-  const pad = { top: 24, right: 22, bottom: 44, left: 58 };
-  const chartRows = rows.filter((row) => Number.isFinite(row.weight_lbs));
-  const weights = chartRows.map((r) => r.weight_lbs).filter(Number.isFinite);
-  const avgs = rows.map((_, i) => movingAverage(rows, i)).filter(Number.isFinite);
-  const allValues = [...weights, ...avgs];
-  const min = 165;
-  const max = 215;
+  const pad = { top: 24, right: activeMetric === 'steps' ? 62 : 22, bottom: 44, left: 58 };
   const chartWidth = width - pad.left - pad.right;
   const chartHeight = height - pad.top - pad.bottom;
-
   const x = (i) => pad.left + (rows.length === 1 ? chartWidth / 2 : (i / (rows.length - 1)) * chartWidth);
-  const y = (value) => pad.top + ((max - value) / (max - min)) * chartHeight;
 
   ctx.clearRect(0, 0, width, height);
   ctx.font = '12px Inter, system-ui, sans-serif';
   ctx.lineWidth = 1;
 
+  if (activeMetric === 'steps') drawStepsChart(ctx, rows, { width, height, pad, chartWidth, chartHeight, x });
+  else if (activeMetric === 'tdee') drawTdeeChart(ctx, rows, { width, height, pad, chartWidth, chartHeight, x });
+  else drawWeightChart(ctx, rows, { width, height, pad, chartWidth, chartHeight, x });
+
+  drawDateLabels(ctx, rows, { height, x });
+}
+
+function drawWeightChart(ctx, rows, layout) {
+  const { width, pad, chartHeight, x } = layout;
+  const min = 165;
+  const max = 215;
+  const y = (value) => pad.top + ((max - value) / (max - min)) * chartHeight;
+
+  drawGrid(ctx, { width, pad, min, max, step: 5, y, formatter: (v) => `${oneDecimal.format(v)} lb` });
+  drawLine(ctx, rows.map((row, i) => (Number.isFinite(row.weight_lbs) ? { x: x(i), y: y(row.weight_lbs) } : null)).filter(Boolean), '#72ddf7', 3);
+  drawLine(ctx, rows.map((row, i) => {
+    const avg = movingAverage(rows, i);
+    return avg ? { x: x(i), y: y(avg) } : null;
+  }).filter(Boolean), '#f7b267', 3);
+}
+
+function drawStepsChart(ctx, rows, layout) {
+  const { width, pad, chartHeight, chartWidth, x } = layout;
+  const dailyMax = niceMax(rows.map((row) => row.steps));
+  const avgMax = niceMax(rows.map((_, i) => averageMetric(rows, i, 'steps')).filter(Number.isFinite));
+  const leftY = (value) => pad.top + ((dailyMax - value) / dailyMax) * chartHeight;
+  const rightY = (value) => pad.top + ((avgMax - value) / avgMax) * chartHeight;
+
+  drawGrid(ctx, { width, pad, min: 0, max: dailyMax, step: dailyMax / 4, y: leftY, formatter: (v) => number.format(v) });
+  drawRightAxis(ctx, { width, pad, min: 0, max: avgMax, step: avgMax / 4, y: rightY, formatter: (v) => number.format(v) });
+
+  const barWidth = Math.max(2, Math.min(12, chartWidth / rows.length * 0.72));
+  ctx.fillStyle = 'rgba(114, 221, 247, 0.55)';
+  rows.forEach((row, i) => {
+    if (!Number.isFinite(row.steps)) return;
+    const barHeight = pad.top + chartHeight - leftY(row.steps);
+    ctx.fillRect(x(i) - barWidth / 2, leftY(row.steps), barWidth, barHeight);
+  });
+  drawLine(ctx, rows.map((row, i) => {
+    const avg = averageMetric(rows, i, 'steps');
+    return avg ? { x: x(i), y: rightY(avg) } : null;
+  }).filter(Boolean), '#f7b267', 3);
+}
+
+function drawTdeeChart(ctx, rows, layout) {
+  const { width, pad, chartHeight, x } = layout;
+  const points = rows.map((row, i) => ({ row, tdee: estimateTdee(rows, i) })).filter((p) => Number.isFinite(p.tdee));
+  if (!points.length) return;
+  const values = points.map((p) => p.tdee);
+  const min = Math.floor((Math.min(...values) - 100) / 100) * 100;
+  const max = Math.ceil((Math.max(...values) + 100) / 100) * 100;
+  const y = (value) => pad.top + ((max - value) / (max - min)) * chartHeight;
+
+  drawGrid(ctx, { width, pad, min, max, step: 100, y, formatter: (v) => number.format(v) });
+  drawLine(ctx, rows.map((row, i) => {
+    const tdee = estimateTdee(rows, i);
+    return Number.isFinite(tdee) ? { x: x(i), y: y(tdee) } : null;
+  }).filter(Boolean), '#72ddf7', 3);
+}
+
+function drawGrid(ctx, { width, pad, min, max, step, y, formatter }) {
   ctx.strokeStyle = '#2a3546';
   ctx.fillStyle = '#9facbd';
-  for (let value = min; value <= max; value += 5) {
+  for (let value = min; value <= max + step / 2; value += step) {
     const ty = y(value);
     ctx.beginPath();
     ctx.moveTo(pad.left, ty);
     ctx.lineTo(width - pad.right, ty);
     ctx.stroke();
-    ctx.fillText(`${oneDecimal.format(value)} lb`, 8, ty + 4);
+    ctx.fillText(formatter(value), 8, ty + 4);
   }
+}
 
+function drawRightAxis(ctx, { width, pad, min, max, step, y, formatter }) {
+  ctx.fillStyle = '#9facbd';
+  for (let value = min; value <= max + step / 2; value += step) {
+    ctx.fillText(formatter(value), width - pad.right + 8, y(value) + 4);
+  }
+}
+
+function drawDateLabels(ctx, rows, { height, x }) {
   ctx.fillStyle = '#9facbd';
   rows.forEach((row, i) => {
     if (i === 0 || i === rows.length - 1 || i % Math.ceil(rows.length / 5) === 0) {
       ctx.fillText(row.date.slice(5), x(i) - 14, height - 15);
     }
   });
+}
 
-  drawLine(ctx, rows.map((row, i) => (Number.isFinite(row.weight_lbs) ? { x: x(i), y: y(row.weight_lbs), value: row.weight_lbs } : null)).filter(Boolean), '#72ddf7', 3);
-  drawLine(ctx, rows.map((row, i) => {
-    const avg = movingAverage(rows, i);
-    return avg ? { x: x(i), y: y(avg), value: avg } : null;
-  }).filter(Boolean), '#f7b267', 3);
+function niceMax(values) {
+  const max = Math.max(...values.filter(Number.isFinite), 1);
+  const magnitude = 10 ** Math.floor(Math.log10(max));
+  return Math.ceil(max / magnitude) * magnitude;
+}
+
+function updateChartChrome() {
+  const configs = {
+    weight: {
+      title: 'Weight trend',
+      description: 'Daily weight with a 7-day moving average when enough data exists.',
+      legend: '<span><i class="dot weight"></i> Weight</span><span><i class="dot average"></i> 7-day avg</span>',
+    },
+    steps: {
+      title: 'Steps trend',
+      description: 'Daily steps as bars with weekly average steps as a line on the right axis.',
+      legend: '<span><i class="dot weight"></i> Daily steps</span><span><i class="dot average"></i> 7-day avg</span>',
+    },
+    tdee: {
+      title: 'Estimated TDEE',
+      description: '35-day rolling TDEE estimate based on calories and smoothed weight change.',
+      legend: '<span><i class="dot weight"></i> Est. TDEE</span>',
+    },
+  };
+  const config = configs[activeMetric];
+  document.getElementById('chart-title').textContent = config.title;
+  document.getElementById('chart-description').textContent = config.description;
+  document.getElementById('chart-legend').innerHTML = config.legend;
+  document.querySelectorAll('.chart-toggle').forEach((button) => {
+    button.classList.toggle('active', button.dataset.metric === activeMetric);
+  });
 }
 
 function drawLine(ctx, points, color, width) {
@@ -217,14 +310,23 @@ async function loadDashboard() {
   if (!dataRes.ok) throw new Error(`Could not load ${DATA_URL}`);
   const rows = parseCsv(await dataRes.text());
   renderSummary(rows);
-  drawWeightChart(rows);
+  dashboardRows = rows;
+  updateChartChrome();
+  drawMetricChart(rows);
   renderTable(rows);
   if (statusRes?.ok) renderSyncStatus(await statusRes.json());
   else renderSyncStatus(null);
 }
 
 document.getElementById('reload-button').addEventListener('click', loadDashboard);
-window.addEventListener('resize', () => loadDashboard().catch(console.error));
+document.querySelectorAll('.chart-toggle').forEach((button) => {
+  button.addEventListener('click', () => {
+    activeMetric = button.dataset.metric;
+    updateChartChrome();
+    drawMetricChart(dashboardRows);
+  });
+});
+window.addEventListener('resize', () => drawMetricChart(dashboardRows));
 loadDashboard().catch((error) => {
   document.getElementById('summary-card').textContent = error.message;
   console.error(error);

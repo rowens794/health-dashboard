@@ -16,8 +16,7 @@
         <div class="status-card" id="summary-card">Loading…</div>
       </header>
 
-      <section class="panel sync-panel" aria-label="Sync status">
-        <div class="sync-title">Sync status</div>
+      <section class="sync-panel" aria-label="Sync status">
         <div class="sync-grid" id="sync-status">Loading sync status…</div>
       </section>
 
@@ -25,9 +24,14 @@
         <div class="panel-header">
           <div>
             <h2 id="chart-title">Weight trend</h2>
-            <p>Daily weight with a 7-day moving average when enough data exists.</p>
+            <p id="chart-description">Daily weight with a 7-day moving average when enough data exists.</p>
           </div>
-          <div class="legend">
+          <div class="chart-controls" aria-label="Chart metric">
+            <button class="chart-toggle active" type="button" data-metric="weight">Weight</button>
+            <button class="chart-toggle" type="button" data-metric="steps">Steps</button>
+            <button class="chart-toggle" type="button" data-metric="tdee">Est. TDEE</button>
+          </div>
+          <div class="legend" id="chart-legend">
             <span><i class="dot weight"></i> Weight</span>
             <span><i class="dot average"></i> 7-day avg</span>
           </div>
@@ -66,6 +70,6 @@
       </section>
     </main>
 
-    <script src="app.js?v=20260501-2231"></script>
+    <script src="app.js?v=20260501-2238"></script>
   </body>
 </html>
